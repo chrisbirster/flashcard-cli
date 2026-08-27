@@ -2,12 +2,9 @@ const DeckId = @import("card.zig").DeckId;
 const CardId = @import("card.zig").CardId;
 const NoteId = @import("content.zig").NoteId;
 
-/// Domain-level help topics retained by the application layer.
-/// Command resolution and argument parsing live in thrawn_cli.zig.
 pub const HelpTopic = enum {
     general,
     deck,
-    nut,
     note,
     card,
     study,
@@ -23,8 +20,8 @@ pub const StudyOrder = enum {
     new_first,
 };
 
-/// Parsed Deez application commands. Thrawn owns CLI mechanics and translates
-/// the selected command tree node into this domain command union.
+/// Parsed Plandalf application commands. Thrawn owns CLI mechanics and
+/// translates the selected command tree node into this domain command union.
 pub const Command = union(enum) {
     help: HelpTopic,
     decks,
@@ -34,8 +31,6 @@ pub const Command = union(enum) {
     deck_delete: struct { deck_id: DeckId },
     deck_export: struct { deck_id: DeckId },
     deck_import: struct { path: []const u8 },
-    nut_export: struct { deck_id: DeckId },
-    nut_import: struct { path: []const u8 },
     note_add: struct {
         deck_id: DeckId,
         note_type: []const u8,
@@ -65,99 +60,87 @@ pub const Command = union(enum) {
 };
 
 pub const help_text =
-    \\DEEZ — Drill, Evaluate, Encode, Zen
+    \\Plandalf — spaced repetition that arrives precisely when it means to.
     \\
     \\Usage:
-    \\  deez setup
-    \\  deez help [deck|nut|note|card|study|stats|inspect|fsrs|scheduler]
-    \\  deez decks
-    \\  deez nuts
-    \\  deez nut export <deck-id> > deck.nut
-    \\  deez nut import <deck.nut>
-    \\  deez cards <deck-id>
-    \\  deez deck add <name>
-    \\  deez deck rename <deck-id> <name>
-    \\  deez deck delete <deck-id> --yes
-    \\  deez deck export <deck-id> > deck.json
-    \\  deez deck import <deck.json|deck.nut>
-    \\  deez note add <deck-id> <basic|reverse|optional-reverse|cloze|type-answer> <fields...>
-    \\  deez note edit <deck-id> <note-id> <fields...>
-    \\  deez card add <deck-id> <question> <answer>
-    \\  deez card edit <card-id> <question> <answer>
-    \\  deez card delete <card-id> --yes
-    \\  deez study <deck-id> [--new-limit <count>] [--order due|reviews-first|new-first] [--shuffle]
-    \\  deez stats [deck-id] [--json]
-    \\  deez inspect <card-id> [--json]
-    \\  deez fsrs optimize [deck-id] [--recency]
-    \\  deez fsrs evaluate [deck-id]
-    \\  deez fsrs simulate [--retention <0..1>]
-    \\  deez fsrs retention
-    \\  deez scheduler list
+    \\  plandalf setup
+    \\  plandalf help [deck|note|card|study|stats|inspect|fsrs|scheduler]
+    \\  plandalf decks
+    \\  plandalf cards <deck-id>
+    \\  plandalf deck add <name>
+    \\  plandalf deck rename <deck-id> <name>
+    \\  plandalf deck delete <deck-id> --yes
+    \\  plandalf deck export <deck-id> > deck.deck
+    \\  plandalf deck import <deck.deck>
+    \\  plandalf note add <deck-id> <basic|reverse|optional-reverse|cloze|type-answer> <fields...>
+    \\  plandalf note edit <deck-id> <note-id> <fields...>
+    \\  plandalf card add <deck-id> <question> <answer>
+    \\  plandalf card edit <card-id> <question> <answer>
+    \\  plandalf card delete <card-id> --yes
+    \\  plandalf study <deck-id> [--new-limit <count>] [--order due|reviews-first|new-first] [--shuffle]
+    \\  plandalf stats [deck-id] [--json]
+    \\  plandalf inspect <card-id> [--json]
+    \\  plandalf fsrs optimize [deck-id] [--recency]
+    \\  plandalf fsrs evaluate [deck-id]
+    \\  plandalf fsrs simulate [--retention <0..1>]
+    \\  plandalf fsrs retention
+    \\  plandalf scheduler list
 ;
 
 const deck_help =
     \\Deck commands:
-    \\  deez decks
-    \\  deez deck add <name>
-    \\  deez deck rename <deck-id> <name>
-    \\  deez deck delete <deck-id> --yes
-    \\  deez deck export <deck-id> > deck.json
-    \\  deez deck import <deck.json|deck.nut>
-;
-
-const nut_help =
-    \\Nut commands:
-    \\  deez nuts
-    \\  deez nut export <deck-id> > deck.nut
-    \\  deez nut import <deck.nut>
+    \\  plandalf decks
+    \\  plandalf deck add <name>
+    \\  plandalf deck rename <deck-id> <name>
+    \\  plandalf deck delete <deck-id> --yes
+    \\  plandalf deck export <deck-id> > deck.deck
+    \\  plandalf deck import <deck.deck>
     \\
-    \\`deez nuts` lists the same stored decks as `deez decks`.
-    \\.nut files are line-oriented JSON deck files for sharing deck content.
+    \\.deck is Plandalf's shareable line-oriented JSON deck format.
 ;
 
 const note_help =
     \\Note commands:
-    \\  deez note add <deck-id> basic <front> <back>
-    \\  deez note add <deck-id> reverse <front> <back>
-    \\  deez note add <deck-id> optional-reverse <front> <back> <add-reverse>
-    \\  deez note add <deck-id> cloze <text> <extra>
-    \\  deez note add <deck-id> type-answer <front> <back>
-    \\  deez note edit <deck-id> <note-id> <fields...>
+    \\  plandalf note add <deck-id> basic <front> <back>
+    \\  plandalf note add <deck-id> reverse <front> <back>
+    \\  plandalf note add <deck-id> optional-reverse <front> <back> <add-reverse>
+    \\  plandalf note add <deck-id> cloze <text> <extra>
+    \\  plandalf note add <deck-id> type-answer <front> <back>
+    \\  plandalf note edit <deck-id> <note-id> <fields...>
 ;
 
 const card_help =
     \\Card commands:
-    \\  deez cards <deck-id>
-    \\  deez card add <deck-id> <question> <answer>
-    \\  deez card edit <card-id> <question> <answer>
-    \\  deez card delete <card-id> --yes
+    \\  plandalf cards <deck-id>
+    \\  plandalf card add <deck-id> <question> <answer>
+    \\  plandalf card edit <card-id> <question> <answer>
+    \\  plandalf card delete <card-id> --yes
 ;
 
 const study_help =
     \\Study command:
-    \\  deez study <deck-id> [--new-limit <count>] [--order due|reviews-first|new-first] [--shuffle]
+    \\  plandalf study <deck-id> [--new-limit <count>] [--order due|reviews-first|new-first] [--shuffle]
     \\
     \\Defaults preserve timestamp order and do not limit new cards or shuffle.
 ;
 
-const stats_help = "Usage: deez stats [deck-id] [--json]\n";
-const inspect_help = "Usage: deez inspect <card-id> [--json]\n";
+const stats_help = "Usage: plandalf stats [deck-id] [--json]\n";
+const inspect_help = "Usage: plandalf inspect <card-id> [--json]\n";
 
 const fsrs_help =
     \\FSRS commands:
-    \\  deez fsrs optimize [deck-id] [--recency]
-    \\  deez fsrs evaluate [deck-id]
-    \\  deez fsrs simulate [--retention <0..1>]
-    \\  deez fsrs retention
+    \\  plandalf fsrs optimize [deck-id] [--recency]
+    \\  plandalf fsrs evaluate [deck-id]
+    \\  plandalf fsrs simulate [--retention <0..1>]
+    \\  plandalf fsrs retention
 ;
 
-const scheduler_help = "Usage: deez scheduler list\n";
+const scheduler_help = "Usage: plandalf scheduler list\n";
 
 pub fn helpText(topic: HelpTopic) []const u8 {
     return switch (topic) {
         .general => help_text,
         .deck => deck_help,
-        .nut => nut_help,
         .note => note_help,
         .card => card_help,
         .study => study_help,
