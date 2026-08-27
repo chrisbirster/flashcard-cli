@@ -23,10 +23,12 @@ jobs:
           git clone --depth 1 --branch dev https://github.com/chrisbirster/deez.git /tmp/deez-source
           rm -rf /tmp/deez-source/.git
 
-      - name: Replace repository contents
+      - name: Replace repository contents except workflows
         run: |
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -a /tmp/deez-source/. .
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude '.github/workflows/' \
+            /tmp/deez-source/ ./
 
       - name: Commit independent snapshot
         run: |
