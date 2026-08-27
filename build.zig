@@ -17,10 +17,6 @@ pub fn build(b: *std.Build) void {
     plandalf_build_options.addOption([]const u8, "version", version);
     plandalf_build_options.addOption(bool, "local_api_server", true);
 
-    const bongo_dependency = b.dependency("bongo", .{
-        .target = target,
-        .optimize = optimize,
-    });
     const thrawn_dependency = b.dependency("thrawn", .{
         .target = target,
         .optimize = optimize,
@@ -37,7 +33,6 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     mod.linkSystemLibrary("sqlite3", .{});
-    mod.addImport("bongo", bongo_dependency.module("bongo"));
     mod.addImport("thrawn", thrawn_dependency.module("thrawn"));
     mod.addImport("httpz", httpz_dependency.module("httpz"));
     mod.addOptions("build_options", build_options);
