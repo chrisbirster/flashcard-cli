@@ -4,8 +4,7 @@ const cli = @import("cli.zig");
 const config = @import("config.zig");
 const content = @import("content.zig");
 const card_types = @import("card_types.zig");
-const deck_json = @import("deck_json.zig");
-const nut = @import("nut.zig");
+const deck_file = @import("deck_file.zig");
 const fsrs = @import("fsrs/root.zig");
 const storage = @import("storage/root.zig");
 const study_mod = @import("study.zig");
@@ -168,23 +167,11 @@ fn runWithStore(
             try store.deleteDeck(args.deck_id);
             try out.print("Deleted deck {d}.\n", .{args.deck_id});
         },
-        .deck_export => |args| try deck_json.exportDeck(allocator, store, args.deck_id, out),
+        .deck_export => |args| try deck_file.exportDeck(allocator, store, args.deck_id, out),
         .deck_import => |args| {
             const bytes = try Io.Dir.cwd().readFileAlloc(io, args.path, allocator, .limited(64 * 1024 * 1024));
             defer allocator.free(bytes);
-            if (std.mem.endsWith(u8, args.path, ".deck")) {
-                const result = try nut.importSlice(allocator, store, bytes, now_ms);
-                try out.print("Imported deck {d} ({d} cards).\n", .{ result.deck_id, result.card_count });
-            } else {
-                const result = try deck_json.importSlice(allocator, store, bytes, now_ms);
-                try out.print("Imported deck {d} ({d} cards).\n", .{ result.deck_id, result.card_count });
-            }
-        },
-        .nut_export => |args| try nut.exportDeck(allocator, store, args.deck_id, out),
-        .nut_import => |args| {
-            const bytes = try Io.Dir.cwd().readFileAlloc(io, args.path, allocator, .limited(64 * 1024 * 1024));
-            defer allocator.free(bytes);
-            const result = try nut.importSlice(allocator, store, bytes, now_ms);
+            const result = try deck_file.importSlice(allocator, store, bytes, now_ms);
             try out.print("Imported deck {d} ({d} cards).\n", .{ result.deck_id, result.card_count });
         },
         .note_add => |args| {
