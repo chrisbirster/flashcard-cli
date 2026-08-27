@@ -1,4 +1,4 @@
-name: Zig 0.16 + Bongo
+name: Zig 0.16
 
 on:
   push:
@@ -14,5 +14,5 @@ jobs:
           version: 0.16.0
       - name: Install SQLite headers
         run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
-      - name: Test legacy Zig implementation against pinned Bongo 0.6.0 package
+      - name: Test Plandalf
         run: zig build test
