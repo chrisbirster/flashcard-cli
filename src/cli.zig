@@ -31,6 +31,10 @@ pub const Command = union(enum) {
     deck_delete: struct { deck_id: DeckId },
     deck_export: struct { deck_id: DeckId },
     deck_import: struct { path: []const u8 },
+    // Internal compatibility variants retained while the serializer module is
+    // renamed. They are not exposed by the Plandalf command tree.
+    nut_export: struct { deck_id: DeckId },
+    nut_import: struct { path: []const u8 },
     note_add: struct {
         deck_id: DeckId,
         note_type: []const u8,
