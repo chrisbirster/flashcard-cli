@@ -45,7 +45,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !void {
     const open_browser = options.open_browser and init.environ_map.get("CI") == null;
     const selection = try config.resolve(init);
 
-    const db_path_z = try init.arena.allocator().dupeZ(u8, selection.sqlite_path.?);
+    const db_path_z = try init.arena.allocator().dupeZ(u8, selection.sqlite_path);
     var db = try storage.Db.open(db_path_z);
     defer db.close();
     try db.migrate();
@@ -108,7 +108,7 @@ test "web cli defaults to browser open on the fixed local port" {
     try std.testing.expect(options.open_browser);
 }
 
-test "web cli accepts port web root and no-open" {
+test "web cli accepts port web root and no-open in any useful combination" {
     const first = [_][]const u8{ "plandalf", "web", "--port", "55000", "--web-root", "/tmp/plandalf-web", "--no-open" };
     const first_options = try parseOptions(&first);
     try std.testing.expectEqual(@as(u16, 55000), first_options.port);
@@ -118,14 +118,17 @@ test "web cli accepts port web root and no-open" {
     const second = [_][]const u8{ "plandalf", "web", "--no-open", "--web-root", "/tmp/plandalf-web", "--port", "55001" };
     const second_options = try parseOptions(&second);
     try std.testing.expectEqual(@as(u16, 55001), second_options.port);
+    try std.testing.expectEqualStrings("/tmp/plandalf-web", second_options.web_root.?);
     try std.testing.expect(!second_options.open_browser);
 }
 
 test "web cli rejects invalid ports and arguments" {
     const zero = [_][]const u8{ "plandalf", "web", "--port", "0" };
     try std.testing.expectError(error.InvalidPort, parseOptions(&zero));
+
     const missing_root = [_][]const u8{ "plandalf", "web", "--web-root" };
     try std.testing.expectError(error.InvalidArguments, parseOptions(&missing_root));
+
     const invalid = [_][]const u8{ "plandalf", "web", "55000" };
     try std.testing.expectError(error.InvalidArguments, parseOptions(&invalid));
 }
