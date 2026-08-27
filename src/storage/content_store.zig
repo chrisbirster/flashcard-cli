@@ -2,8 +2,8 @@ const std = @import("std");
 
 const content = @import("../content.zig");
 const store_mod = @import("store.zig");
+const sqlite = @import("sqlite.zig");
 const sqlite_content = @import("sqlite_content.zig");
-const mongodb_content = @import("mongodb_content.zig");
 
 pub const OwnedDeckNote = struct {
     note: content.OwnedNote,
@@ -21,11 +21,14 @@ pub const ContentStore = struct {
         return .{ .store = store };
     }
 
-    pub fn ensureBuiltInBasic(self: ContentStore, created_at_ms: i64) !content.NoteTypeId {
+    fn db(self: ContentStore) *sqlite.Db {
         return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.ensureBuiltInBasic(db, created_at_ms),
-            .mongodb => |*mongo| mongodb_content.ensureBuiltInBasic(mongo, created_at_ms),
+            .sqlite => |db| db,
         };
+    }
+
+    pub fn ensureBuiltInBasic(self: ContentStore, created_at_ms: i64) !content.NoteTypeId {
+        return sqlite_content.ensureBuiltInBasic(self.db(), created_at_ms);
     }
 
     pub fn createNote(
@@ -36,10 +39,8 @@ pub const ContentStore = struct {
         tags_json: []const u8,
         created_at_ms: i64,
     ) !content.NoteId {
-        return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.createNote(db, note_type_id, fields, tags_json, created_at_ms),
-            .mongodb => |*mongo| mongodb_content.createNote(allocator, mongo, note_type_id, fields, tags_json, created_at_ms),
-        };
+        _ = allocator;
+        return sqlite_content.createNote(self.db(), note_type_id, fields, tags_json, created_at_ms);
     }
 
     pub fn createBasicNote(
@@ -51,10 +52,7 @@ pub const ContentStore = struct {
         tags_json: []const u8,
         created_at_ms: i64,
     ) !content.CreatedNote {
-        return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.createBasicNote(allocator, db, deck_id, front, back, tags_json, created_at_ms),
-            .mongodb => |*mongo| mongodb_content.createBasicNote(allocator, mongo, deck_id, front, back, tags_json, created_at_ms),
-        };
+        return sqlite_content.createBasicNote(allocator, self.db(), deck_id, front, back, tags_json, created_at_ms);
     }
 
     pub fn adoptLegacyCard(
@@ -63,10 +61,7 @@ pub const ContentStore = struct {
         card_id: u64,
         adopted_at_ms: i64,
     ) !content.NoteId {
-        return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.adoptLegacyCard(allocator, db, card_id, adopted_at_ms),
-            .mongodb => |*mongo| mongodb_content.adoptLegacyCard(allocator, mongo, card_id, adopted_at_ms),
-        };
+        return sqlite_content.adoptLegacyCard(allocator, self.db(), card_id, adopted_at_ms);
     }
 
     pub fn getNote(
@@ -74,19 +69,14 @@ pub const ContentStore = struct {
         allocator: std.mem.Allocator,
         note_id: content.NoteId,
     ) !?content.OwnedNote {
-        return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.getNote(allocator, db, note_id),
-            .mongodb => |*mongo| mongodb_content.getNote(allocator, mongo, note_id),
-        };
+        return sqlite_content.getNote(allocator, self.db(), note_id);
     }
 
     /// Return logical notes whose generated cards belong to `deck_id`.
     ///
     /// The content schema intentionally does not duplicate deck ownership on a
-    /// note. A note belongs to a deck through its generated cards, so this
-    /// operation derives membership through the existing Store/CardSource
-    /// abstractions and works identically for SQLite and MongoDB.
-    /// Legacy cards without Content Model v2 metadata are ignored.
+    /// note. A note belongs to a deck through its generated cards. Legacy cards
+    /// without Content Model v2 metadata are ignored.
     pub fn notesForDeck(
         self: ContentStore,
         allocator: std.mem.Allocator,
@@ -144,15 +134,11 @@ pub const ContentStore = struct {
         allocator: std.mem.Allocator,
         card_id: u64,
     ) !?content.GeneratedCardSource {
-        return switch (self.store.*) {
-            .sqlite => |db| sqlite_content.cardSource(allocator, db, card_id),
-            .mongodb => |*mongo| mongodb_content.cardSource(allocator, mongo, card_id),
-        };
+        return sqlite_content.cardSource(allocator, self.db(), card_id);
     }
 };
 
 test "ContentStore adopts an existing SQLite card without changing its id" {
-    const sqlite = @import("sqlite.zig");
     var db = try sqlite.Db.open(":memory:");
     defer db.close();
     try db.migrate();
@@ -169,7 +155,6 @@ test "ContentStore adopts an existing SQLite card without changing its id" {
 }
 
 test "notesForDeck deduplicates generated cards into logical notes" {
-    const sqlite = @import("sqlite.zig");
     const note_type_store = @import("note_type_store.zig");
     const generated_card_store = @import("generated_card_store.zig");
 
