@@ -22,7 +22,6 @@ pub const Route = union(enum) {
                 .deck_add => |args| allocator.free(@constCast(args.name)),
                 .deck_rename => |args| allocator.free(@constCast(args.name)),
                 .deck_import => |args| allocator.free(@constCast(args.path)),
-                .nut_import => |args| allocator.free(@constCast(args.path)),
                 .note_add => |args| {
                     allocator.free(@constCast(args.note_type));
                     freeFields(allocator, args.fields);
@@ -126,17 +125,14 @@ fn deckDeleteHandler(ctx: *th.Context) !void {
     if (!ctx.hasOption("yes")) return error.ConfirmationRequired;
     try setRoute(ctx, .{ .core = .{ .deck_delete = .{ .deck_id = try parseId(ctx.args[0]) } } });
 }
-
-// The existing line-oriented serializer is retained internally while its public
-// name becomes simply `.deck`.
 fn deckExportHandler(ctx: *th.Context) !void {
-    try setRoute(ctx, .{ .core = .{ .nut_export = .{ .deck_id = try parseId(ctx.args[0]) } } });
+    try setRoute(ctx, .{ .core = .{ .deck_export = .{ .deck_id = try parseId(ctx.args[0]) } } });
 }
 fn deckImportHandler(ctx: *th.Context) !void {
     const path = try dupeText(ctx, 0);
     errdefer ctx.allocator.free(path);
     if (!std.mem.endsWith(u8, path, ".deck")) return error.InvalidDeckFile;
-    try setRoute(ctx, .{ .core = .{ .nut_import = .{ .path = path } } });
+    try setRoute(ctx, .{ .core = .{ .deck_import = .{ .path = path } } });
 }
 
 fn noteAddHandler(ctx: *th.Context) !void {
