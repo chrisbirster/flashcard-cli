@@ -1,5 +1,4 @@
 const std = @import("std");
-const bongo = @import("bongo");
 
 const content = @import("../content.zig");
 const store_mod = @import("store.zig");
@@ -70,58 +69,15 @@ fn ensureSqlite(db: *sqlite.Db, definition: content.NoteTypeDefinition, created_
     }
 }
 
-fn fieldsJson(allocator: std.mem.Allocator, fields: []const content.FieldDefinition) ![]u8 {
-    var out: std.Io.Writer.Allocating = .init(allocator);
-    errdefer out.deinit();
-    try std.json.Stringify.value(fields, .{}, &out.writer);
-    return out.toOwnedSlice();
-}
-
-fn templatesJson(allocator: std.mem.Allocator, templates: []const content.CardTemplate) ![]u8 {
-    var out: std.Io.Writer.Allocating = .init(allocator);
-    errdefer out.deinit();
-    try std.json.Stringify.value(templates, .{}, &out.writer);
-    return out.toOwnedSlice();
-}
-
-fn ensureMongo(
-    allocator: std.mem.Allocator,
-    mongo: anytype,
-    definition: content.NoteTypeDefinition,
-    created_at_ms: i64,
-) !void {
-    try content.validateNoteType(definition);
-    const db_name = mongo.client.databaseName();
-    var existing = try mongo.client.findOne(db_name, "note_types", .{ ._id = @as(i64, @intCast(definition.id)) });
-    if (existing) |*document| {
-        document.deinit();
-        return;
-    }
-    const fields_json = try fieldsJson(allocator, definition.fields);
-    defer allocator.free(fields_json);
-    const templates_json = try templatesJson(allocator, definition.templates);
-    defer allocator.free(templates_json);
-    _ = try mongo.client.insertOne(db_name, "note_types", .{
-        ._id = @as(i64, @intCast(definition.id)),
-        .slug = definition.slug,
-        .name = definition.name,
-        .kind = noteKindText(definition.kind),
-        .css = definition.css,
-        .fields_json = fields_json,
-        .templates_json = templates_json,
-        .created_at_ms = created_at_ms,
-    });
-}
-
 pub fn ensure(
     allocator: std.mem.Allocator,
     store: *store_mod.Store,
     definition: content.NoteTypeDefinition,
     created_at_ms: i64,
 ) !void {
+    _ = allocator;
     switch (store.*) {
         .sqlite => |db| try ensureSqlite(db, definition, created_at_ms),
-        .mongodb => |*mongo| try ensureMongo(allocator, mongo, definition, created_at_ms),
     }
 }
 
