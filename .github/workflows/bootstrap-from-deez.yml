@@ -1,0 +1,37 @@
+name: Bootstrap from Deez
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-from-deez.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout flashcard-cli
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone current Deez dev snapshot
+        run: |
+          git clone --depth 1 --branch dev https://github.com/chrisbirster/deez.git /tmp/deez-source
+          rm -rf /tmp/deez-source/.git
+
+      - name: Replace repository contents
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/deez-source/. .
+
+      - name: Commit independent snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: seed from Deez dev snapshot"
+          git push origin HEAD:main
