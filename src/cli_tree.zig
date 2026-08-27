@@ -103,15 +103,23 @@ fn helpHandler(ctx: *th.Context) !void {
     if (ctx.args.len == 0) return setRoute(ctx, .{ .help = .general });
     try setRoute(ctx, .{ .help = .{ .core = try parseHelpTopic(ctx.args[0]) } });
 }
-fn setupHandler(ctx: *th.Context) !void { try setRoute(ctx, .setup); }
-fn decksHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .decks }); }
-fn cardsHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .cards = .{ .deck_id = try parseId(ctx.args[0]) } } }); }
+fn setupHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .setup);
+}
+fn decksHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .decks });
+}
+fn cardsHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .cards = .{ .deck_id = try parseId(ctx.args[0]) } } });
+}
 fn deckAddHandler(ctx: *th.Context) !void {
-    const name = try dupeText(ctx, 0); errdefer ctx.allocator.free(name);
+    const name = try dupeText(ctx, 0);
+    errdefer ctx.allocator.free(name);
     try setRoute(ctx, .{ .core = .{ .deck_add = .{ .name = name } } });
 }
 fn deckRenameHandler(ctx: *th.Context) !void {
-    const name = try dupeText(ctx, 1); errdefer ctx.allocator.free(name);
+    const name = try dupeText(ctx, 1);
+    errdefer ctx.allocator.free(name);
     try setRoute(ctx, .{ .core = .{ .deck_rename = .{ .deck_id = try parseId(ctx.args[0]), .name = name } } });
 }
 fn deckDeleteHandler(ctx: *th.Context) !void {
@@ -125,29 +133,40 @@ fn deckExportHandler(ctx: *th.Context) !void {
     try setRoute(ctx, .{ .core = .{ .nut_export = .{ .deck_id = try parseId(ctx.args[0]) } } });
 }
 fn deckImportHandler(ctx: *th.Context) !void {
-    const path = try dupeText(ctx, 0); errdefer ctx.allocator.free(path);
+    const path = try dupeText(ctx, 0);
+    errdefer ctx.allocator.free(path);
     if (!std.mem.endsWith(u8, path, ".deck")) return error.InvalidDeckFile;
     try setRoute(ctx, .{ .core = .{ .nut_import = .{ .path = path } } });
 }
 
 fn noteAddHandler(ctx: *th.Context) !void {
-    const note_type = try dupeText(ctx, 1); errdefer ctx.allocator.free(note_type);
-    const fields = try ctx.dupeArguments(ctx.allocator, 2); errdefer freeFields(ctx.allocator, fields);
+    const note_type = try dupeText(ctx, 1);
+    errdefer ctx.allocator.free(note_type);
+    const fields = try ctx.dupeArguments(ctx.allocator, 2);
+    errdefer freeFields(ctx.allocator, fields);
     try setRoute(ctx, .{ .core = .{ .note_add = .{ .deck_id = try parseId(ctx.args[0]), .note_type = note_type, .fields = fields } } });
 }
 fn noteEditHandler(ctx: *th.Context) !void {
-    const fields = try ctx.dupeArguments(ctx.allocator, 2); errdefer freeFields(ctx.allocator, fields);
+    const fields = try ctx.dupeArguments(ctx.allocator, 2);
+    errdefer freeFields(ctx.allocator, fields);
     try setRoute(ctx, .{ .core = .{ .note_edit = .{ .deck_id = try parseId(ctx.args[0]), .note_id = try parseId(ctx.args[1]), .fields = fields } } });
 }
-fn notesHandler(ctx: *th.Context) !void { _ = try parseId(ctx.args[0]); try setRoute(ctx, .notes_cli); }
+fn notesHandler(ctx: *th.Context) !void {
+    _ = try parseId(ctx.args[0]);
+    try setRoute(ctx, .notes_cli);
+}
 fn cardAddHandler(ctx: *th.Context) !void {
-    const q = try dupeText(ctx, 1); errdefer ctx.allocator.free(q);
-    const a = try dupeText(ctx, 2); errdefer ctx.allocator.free(a);
+    const q = try dupeText(ctx, 1);
+    errdefer ctx.allocator.free(q);
+    const a = try dupeText(ctx, 2);
+    errdefer ctx.allocator.free(a);
     try setRoute(ctx, .{ .core = .{ .card_add = .{ .deck_id = try parseId(ctx.args[0]), .question = q, .answer = a } } });
 }
 fn cardEditHandler(ctx: *th.Context) !void {
-    const q = try dupeText(ctx, 1); errdefer ctx.allocator.free(q);
-    const a = try dupeText(ctx, 2); errdefer ctx.allocator.free(a);
+    const q = try dupeText(ctx, 1);
+    errdefer ctx.allocator.free(q);
+    const a = try dupeText(ctx, 2);
+    errdefer ctx.allocator.free(a);
     try setRoute(ctx, .{ .core = .{ .card_edit = .{ .card_id = try parseId(ctx.args[0]), .question = q, .answer = a } } });
 }
 fn cardDeleteHandler(ctx: *th.Context) !void {
@@ -162,14 +181,31 @@ fn studyHandler(ctx: *th.Context) !void {
         .shuffle = ctx.hasOption("shuffle"),
     } } });
 }
-fn statsHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .stats = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null, .json = ctx.hasOption("json") } } }); }
-fn inspectHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .inspect = .{ .card_id = try parseId(ctx.args[0]), .json = ctx.hasOption("json") } } }); }
-fn fsrsOptimizeHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .fsrs_optimize = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null, .recency_half_life_days = if (ctx.hasOption("recency")) 1.0 else null } } }); }
-fn fsrsEvaluateHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .fsrs_evaluate = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null } } }); }
-fn fsrsSimulateHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .fsrs_simulate = .{ .retention = if (ctx.optionValue("retention")) |v| try parseFloat(v) else null } } }); }
-fn fsrsRetentionHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .fsrs_retention }); }
-fn schedulerListHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .scheduler_list }); }
-fn mediaAddHandler(ctx: *th.Context) !void { _ = try requireText(ctx.args[0]); try setRoute(ctx, .rich_cli); }
+fn statsHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .stats = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null, .json = ctx.hasOption("json") } } });
+}
+fn inspectHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .inspect = .{ .card_id = try parseId(ctx.args[0]), .json = ctx.hasOption("json") } } });
+}
+fn fsrsOptimizeHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .fsrs_optimize = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null, .recency_half_life_days = if (ctx.hasOption("recency")) 1.0 else null } } });
+}
+fn fsrsEvaluateHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .fsrs_evaluate = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null } } });
+}
+fn fsrsSimulateHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .fsrs_simulate = .{ .retention = if (ctx.optionValue("retention")) |v| try parseFloat(v) else null } } });
+}
+fn fsrsRetentionHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .fsrs_retention });
+}
+fn schedulerListHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .scheduler_list });
+}
+fn mediaAddHandler(ctx: *th.Context) !void {
+    _ = try requireText(ctx.args[0]);
+    try setRoute(ctx, .rich_cli);
+}
 
 const help_command: th.Command = .{ .name = "help", .summary = "Show help", .handler = helpHandler, .args = .{ .positionals = &.{.{ .name = "topic", .required = false }} } };
 const setup_command: th.Command = .{ .name = "setup", .summary = "Show the SQLite database path", .handler = setupHandler, .args = .{ .exact = 0 } };
@@ -211,9 +247,9 @@ pub const root_command: th.Command = .{
     .name = "plandalf",
     .summary = "Spaced repetition that arrives precisely when it means to",
     .children = &.{
-        &help_command, &setup_command, &decks_command, &cards_command, &deck_command,
-        &note_command, &notes_command, &card_command, &study_command, &stats_command,
-        &inspect_command, &fsrs_command, &scheduler_command, &media_command,
+        &help_command,    &setup_command, &decks_command,     &cards_command, &deck_command,
+        &note_command,    &notes_command, &card_command,      &study_command, &stats_command,
+        &inspect_command, &fsrs_command,  &scheduler_command, &media_command,
     },
 };
 
@@ -252,9 +288,15 @@ pub fn parse(allocator: std.mem.Allocator, argv: []const []const u8) !Route {
     var stderr = std.Io.Writer.fixed(&stderr_buffer);
     var command_path = [_]*const th.Command{selection.command};
     var ctx: th.Context = .{
-        .allocator = allocator, .root = &root_command, .command = selection.command,
-        .command_path = &command_path, .args = parsed.positionals, .options = parsed.values,
-        .stdout = &stdout, .stderr = &stderr, .app_state = &state,
+        .allocator = allocator,
+        .root = &root_command,
+        .command = selection.command,
+        .command_path = &command_path,
+        .args = parsed.positionals,
+        .options = parsed.values,
+        .stdout = &stdout,
+        .stderr = &stderr,
+        .app_state = &state,
     };
     const handler = selection.command.handler orelse return error.UnknownCommand;
     try handler(&ctx);
