@@ -1,8 +1,17 @@
 const std = @import("std");
 const Io = std.Io;
 
+// Kept as a compatibility type for existing storage call sites while the
+// Plandalf application itself is intentionally SQLite-only.
+pub const Backend = enum {
+    sqlite,
+    mongodb,
+};
+
 pub const Selection = struct {
-    sqlite_path: []const u8,
+    backend: Backend = .sqlite,
+    sqlite_path: ?[]const u8 = null,
+    mongo_uri: ?[]const u8 = null,
 };
 
 fn home(init: std.process.Init) ![]const u8 {
@@ -22,10 +31,12 @@ fn ensureSqliteDirectory(init: std.process.Init, allocator: std.mem.Allocator) !
     try Io.Dir.cwd().createDirPath(init.io, dir);
 }
 
+/// Plandalf is SQLite-only. PLANDALF_DB is the sole storage override.
 pub fn resolve(init: std.process.Init) !Selection {
     const allocator = init.arena.allocator();
     try ensureSqliteDirectory(init, allocator);
     return .{
+        .backend = .sqlite,
         .sqlite_path = init.environ_map.get("PLANDALF_DB") orelse try defaultSqlitePath(allocator, try home(init)),
     };
 }
@@ -38,7 +49,7 @@ pub fn setup(init: std.process.Init) !void {
     const out = &stdout_file_writer.interface;
     defer out.flush() catch {};
 
-    try out.print("Plandalf SQLite database: {s}\n", .{selection.sqlite_path});
+    try out.print("Plandalf SQLite database: {s}\n", .{selection.sqlite_path.?});
 }
 
 pub fn isSetupCommand(args: []const []const u8) bool {
@@ -49,4 +60,9 @@ test "default SQLite path is under Plandalf local share" {
     const path = try defaultSqlitePath(std.testing.allocator, "/Users/test");
     defer std.testing.allocator.free(path);
     try std.testing.expectEqualStrings("/Users/test/.local/share/plandalf/plandalf.db", path);
+}
+
+test "Plandalf always resolves SQLite storage" {
+    // The application no longer accepts backend-selection configuration.
+    try std.testing.expectEqual(Backend.sqlite, Selection{}.backend);
 }
