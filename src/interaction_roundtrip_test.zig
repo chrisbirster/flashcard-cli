@@ -1,10 +1,10 @@
 const std = @import("std");
 const card_types = @import("card_types.zig");
-const nut = @import("nut.zig");
+const deck_file = @import("deck_file.zig");
 const portable = @import("portable_content.zig");
 const storage = @import("storage/root.zig");
 
-test "interaction note types round trip through nut v2" {
+test "interaction note types round trip through .deck v2" {
     const allocator = std.testing.allocator;
     var source_db = try storage.Db.open(":memory:");
     defer source_db.close();
@@ -26,7 +26,7 @@ test "interaction note types round trip through nut v2" {
 
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
-    try nut.exportDeck(allocator, &source_store, deck_id, &out.writer);
+    try deck_file.exportDeck(allocator, &source_store, deck_id, &out.writer);
     try std.testing.expect(std.mem.indexOf(u8, out.written(), "multiple-choice") != null);
     try std.testing.expect(std.mem.indexOf(u8, out.written(), "image-occlusion") != null);
 
@@ -34,7 +34,7 @@ test "interaction note types round trip through nut v2" {
     defer dest_db.close();
     try dest_db.migrate();
     var dest_store: storage.Store = .{ .sqlite = &dest_db };
-    const imported = try nut.importSlice(allocator, &dest_store, out.written(), 1);
+    const imported = try deck_file.importSlice(allocator, &dest_store, out.written(), 1);
     try std.testing.expectEqual(@as(usize, 3), imported.card_count);
 
     const notes = try portable.collectDeckNotes(allocator, &dest_store, imported.deck_id);
