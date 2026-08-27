@@ -30,12 +30,9 @@ jobs:
           fi
       - name: Build
         run: zig build
-      - name: Legacy web smoke compatibility
+      - name: Web smoke
         shell: bash
         run: |
-          # The web smoke scripts are being renamed separately; point their old
-          # binary path at the Plandalf binary while exercising the same API.
-          ln -sf plandalf zig-out/bin/deez
           bash test/web_smoke.sh
           bash test/web_media_smoke.sh
       - name: First-run and .deck smoke
