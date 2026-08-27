@@ -1,7 +1,7 @@
 const std = @import("std");
 const Io = std.Io;
 
-pub const reference_prefix = "deez-media://sha256:";
+pub const reference_prefix = "plandalf-media://sha256:";
 pub const max_media_bytes: usize = 256 * 1024 * 1024;
 
 pub const Metadata = struct {
@@ -213,6 +213,7 @@ test "SHA-256 media identity and references are stable" {
     try std.testing.expectEqualStrings("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", &hash);
     const uri = try reference(std.testing.allocator, &hash);
     defer std.testing.allocator.free(uri);
+    try std.testing.expectEqualStrings("plandalf-media://sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", uri);
     try std.testing.expectEqualStrings(&hash, parseReference(uri).?);
 }
 
