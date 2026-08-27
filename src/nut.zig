@@ -4,37 +4,31 @@ const portable = @import("portable_content.zig");
 const storage = @import("storage/root.zig");
 const time = @import("time.zig");
 
-pub const format_name = "deez.nut";
+pub const format_name = "plandalf.deck";
 pub const format_version: u32 = 2;
 
 const deck_kind = "deck";
 const card_kind = "card";
 const note_kind = "note";
 
-const Envelope = struct {
-    kind: []const u8,
-};
-
+const Envelope = struct { kind: []const u8 };
 const DeckRecord = struct {
     kind: []const u8,
     format: []const u8,
     version: u32,
     name: []const u8,
 };
-
 const CardRecord = struct {
     kind: []const u8,
     question: []const u8,
     answer: []const u8,
 };
-
 const NoteRecordInput = struct {
     kind: []const u8,
     note_type: []const u8,
     fields: []const []const u8,
     tags_json: []const u8 = "[]",
 };
-
 const NoteRecordOutput = struct {
     kind: []const u8,
     note_type: []const u8,
@@ -52,27 +46,27 @@ fn requireText(text: []const u8) !void {
 }
 
 fn validateDeck(record: DeckRecord) !void {
-    if (!std.mem.eql(u8, record.kind, deck_kind)) return error.InvalidNutRecord;
-    if (!std.mem.eql(u8, record.format, format_name)) return error.UnsupportedNutFormat;
-    if (record.version != 1 and record.version != format_version) return error.UnsupportedNutVersion;
+    if (!std.mem.eql(u8, record.kind, deck_kind)) return error.InvalidDeckRecord;
+    if (!std.mem.eql(u8, record.format, format_name)) return error.UnsupportedDeckFormat;
+    if (record.version != 1 and record.version != format_version) return error.UnsupportedDeckVersion;
     try requireText(record.name);
 }
 
 fn validateCard(record: CardRecord) !void {
-    if (!std.mem.eql(u8, record.kind, card_kind)) return error.InvalidNutRecord;
+    if (!std.mem.eql(u8, record.kind, card_kind)) return error.InvalidDeckRecord;
     try requireText(record.question);
     try requireText(record.answer);
 }
 
 fn validateNote(record: NoteRecordInput) !void {
-    if (!std.mem.eql(u8, record.kind, note_kind)) return error.InvalidNutRecord;
+    if (!std.mem.eql(u8, record.kind, note_kind)) return error.InvalidDeckRecord;
     _ = try @import("content.zig").BuiltInNoteType.parse(record.note_type);
     if (record.fields.len == 0) return error.InvalidFieldCount;
 }
 
-/// Export Deez's native logical deck format. v2 is NDJSON containing one deck
-/// header and one record per logical note. Generated cards are rebuilt on
-/// import, while review/scheduler state is intentionally excluded.
+/// Export Plandalf's native logical `.deck` format. v2 is NDJSON containing
+/// one deck header and one record per logical note. Generated cards are rebuilt
+/// on import, while review/scheduler state is intentionally excluded.
 pub fn exportDeck(
     allocator: std.mem.Allocator,
     store: *storage.Store,
@@ -164,7 +158,7 @@ pub fn importSlice(
         defer allocator.free(kind);
 
         if (std.mem.eql(u8, kind, deck_kind)) {
-            if (deck_id != null) return error.DuplicateNutHeader;
+            if (deck_id != null) return error.DuplicateDeckHeader;
             var parsed = try std.json.parseFromSlice(DeckRecord, allocator, line, .{ .ignore_unknown_fields = false });
             defer parsed.deinit();
             try validateDeck(parsed.value);
@@ -175,41 +169,41 @@ pub fn importSlice(
             continue;
         }
 
-        const id = deck_id orelse return error.MissingNutHeader;
-        const file_version = version orelse return error.MissingNutHeader;
+        const id = deck_id orelse return error.MissingDeckHeader;
+        const file_version = version orelse return error.MissingDeckHeader;
         switch (file_version) {
             1 => {
-                if (!std.mem.eql(u8, kind, card_kind)) return error.UnsupportedNutRecordKind;
+                if (!std.mem.eql(u8, kind, card_kind)) return error.UnsupportedDeckRecordKind;
                 card_count += try importV1Line(allocator, store, id, line, created_at_ms);
             },
             2 => {
-                if (!std.mem.eql(u8, kind, note_kind)) return error.UnsupportedNutRecordKind;
+                if (!std.mem.eql(u8, kind, note_kind)) return error.UnsupportedDeckRecordKind;
                 card_count += try importV2Line(allocator, store, id, line, created_at_ms);
             },
-            else => return error.UnsupportedNutVersion,
+            else => return error.UnsupportedDeckVersion,
         }
     }
 
     return .{
-        .deck_id = deck_id orelse return error.MissingNutHeader,
+        .deck_id = deck_id orelse return error.MissingDeckHeader,
         .card_count = card_count,
     };
 }
 
-test ".nut v1 import remains compatible" {
+test ".deck v1 import works" {
     var db = try storage.Db.open(":memory:");
     defer db.close();
     try db.migrate();
     var store: storage.Store = .{ .sqlite = &db };
     const source =
-        \\{"kind":"deck","format":"deez.nut","version":1,"name":"Legacy"}
+        \\{"kind":"deck","format":"plandalf.deck","version":1,"name":"Legacy"}
         \\{"kind":"card","question":"q","answer":"a"}
     ;
     const result = try importSlice(std.testing.allocator, &store, source, 0);
     try std.testing.expectEqual(@as(usize, 1), result.card_count);
 }
 
-test ".nut v2 cloze round trip preserves logical note" {
+test ".deck v2 cloze round trip preserves logical note" {
     var source_db = try storage.Db.open(":memory:");
     defer source_db.close();
     try source_db.migrate();
@@ -222,6 +216,7 @@ test ".nut v2 cloze round trip preserves logical note" {
     var out: Io.Writer.Allocating = .init(std.testing.allocator);
     defer out.deinit();
     try exportDeck(std.testing.allocator, &source_store, source_deck, &out.writer);
+    try std.testing.expect(std.mem.indexOf(u8, out.written(), "\"format\":\"plandalf.deck\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out.written(), "\"version\":2") != null);
     try std.testing.expect(std.mem.indexOf(u8, out.written(), "\"kind\":\"note\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out.written(), "\"note_type\":\"cloze\"") != null);
