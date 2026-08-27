@@ -69,7 +69,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !void {
     if (args.len != 3) return error.InvalidArguments;
     const deck_id = try parseId(args[2]);
     const selection = try config.resolve(init);
-    const db_path_z = try init.arena.allocator().dupeZ(u8, selection.sqlite_path.?);
+    const db_path_z = try init.arena.allocator().dupeZ(u8, selection.sqlite_path);
     var db = try storage.Db.open(db_path_z);
     defer db.close();
     try db.migrate();
