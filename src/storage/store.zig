@@ -21,7 +21,7 @@ pub const Store = union(enum) {
 
     fn db(self: *Store) *sqlite.Db {
         return switch (self.*) {
-            .sqlite => |db| db,
+            .sqlite => |database| database,
         };
     }
 
