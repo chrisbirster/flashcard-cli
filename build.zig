@@ -46,9 +46,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "plandalf", .module = mod },
-                // Temporary internal alias while implementation identifiers are
-                // migrated independently of the public Plandalf product name.
-                .{ .name = "deez", .module = mod },
             },
         }),
     });
@@ -68,7 +65,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "plandalf", .module = mod },
-                .{ .name = "deez", .module = mod },
             },
         }),
     });
