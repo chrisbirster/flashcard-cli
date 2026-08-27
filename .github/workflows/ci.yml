@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Ensure SQLite headers
+        run: |
+          if ! dpkg -s libsqlite3-dev >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y libsqlite3-dev
+          fi
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! zig fmt --check build.zig src test; then
+            zig fmt build.zig src test
+            echo 'zig fmt produced the following diff:'
+            git --no-pager diff -- build.zig src test
+            exit 1
+          fi
+      - name: Build
+        run: zig build
+      - name: Local Web API smoke
+        shell: bash
+        run: |
+          bash test/web_smoke.sh
+          bash test/web_media_smoke.sh
+      - name: First-run and shareable deck smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          first_home=$(mktemp -d)
+          HOME="$first_home" ./zig-out/bin/deez --help >/dev/null
+          test ! -e "$first_home/.config/deez/config"
+          HOME="$first_home" ./zig-out/bin/deez decks </dev/null
+          test -f "$first_home/.local/share/deez/deez.db"
+          test -f "$first_home/.config/deez/config"
+          test "$(head -n 1 "$first_home/.config/deez/config")" = "sqlite"
+          HOME="$first_home" ./zig-out/bin/deez deck add "Zig Basics"
+          HOME="$first_home" ./zig-out/bin/deez card add 1 "What is BSON?" "Binary JSON"
+          HOME="$first_home" ./zig-out/bin/deez deck export 1 > /tmp/zig-basics.json
+          HOME="$first_home" ./zig-out/bin/deez nut export 1 > /tmp/zig-basics.nut
+          second_home=$(mktemp -d)
+          HOME="$second_home" ./zig-out/bin/deez deck import /tmp/zig-basics.nut </dev/null
+          HOME="$second_home" ./zig-out/bin/deez decks | grep -q "Zig Basics"
+      - name: Test
+        run: zig build test
+      - name: Benchmark context
+        run: |
+          echo "commit=${GITHUB_SHA}"
+          echo "zig=$(zig version)"
+          uname -a
+      - name: Benchmark smoke
+        run: zig build benchmark -Doptimize=ReleaseFast
+
+  macos-release-smoke:
+    strategy:
+      matrix:
+        runner:
+          - macos-15
+          - macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Build native release binary
+        run: zig build -Doptimize=ReleaseFast
+      - name: Run release binary
+        run: ./zig-out/bin/deez --help >/dev/null
