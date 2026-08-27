@@ -30,29 +30,39 @@ jobs:
           fi
       - name: Build
         run: zig build
-      - name: Local Web API smoke
+      - name: Legacy web smoke compatibility
         shell: bash
         run: |
+          # The web smoke scripts are being renamed separately; point their old
+          # binary path at the Plandalf binary while exercising the same API.
+          ln -sf plandalf zig-out/bin/deez
           bash test/web_smoke.sh
           bash test/web_media_smoke.sh
-      - name: First-run and shareable deck smoke
+      - name: First-run and .deck smoke
         shell: bash
         run: |
           set -euo pipefail
           first_home=$(mktemp -d)
-          HOME="$first_home" ./zig-out/bin/deez --help >/dev/null
+          HOME="$first_home" ./zig-out/bin/plandalf --help >/dev/null
+          HOME="$first_home" ./zig-out/bin/plandalf decks </dev/null
+          test -f "$first_home/.local/share/plandalf/plandalf.db"
           test ! -e "$first_home/.config/deez/config"
-          HOME="$first_home" ./zig-out/bin/deez decks </dev/null
-          test -f "$first_home/.local/share/deez/deez.db"
-          test -f "$first_home/.config/deez/config"
-          test "$(head -n 1 "$first_home/.config/deez/config")" = "sqlite"
-          HOME="$first_home" ./zig-out/bin/deez deck add "Zig Basics"
-          HOME="$first_home" ./zig-out/bin/deez card add 1 "What is BSON?" "Binary JSON"
-          HOME="$first_home" ./zig-out/bin/deez deck export 1 > /tmp/zig-basics.json
-          HOME="$first_home" ./zig-out/bin/deez nut export 1 > /tmp/zig-basics.nut
+          test ! -e "$first_home/.config/plandalf/config"
+          HOME="$first_home" ./zig-out/bin/plandalf deck add "Zig Basics"
+          HOME="$first_home" ./zig-out/bin/plandalf card add 1 "What is SQLite?" "An embedded SQL database"
+          HOME="$first_home" ./zig-out/bin/plandalf deck export 1 > /tmp/zig-basics.deck
+          grep -q '"format":"plandalf.deck"' /tmp/zig-basics.deck
           second_home=$(mktemp -d)
-          HOME="$second_home" ./zig-out/bin/deez deck import /tmp/zig-basics.nut </dev/null
-          HOME="$second_home" ./zig-out/bin/deez decks | grep -q "Zig Basics"
+          HOME="$second_home" ./zig-out/bin/plandalf deck import /tmp/zig-basics.deck </dev/null
+          HOME="$second_home" ./zig-out/bin/plandalf decks | grep -q "Zig Basics"
+          if HOME="$first_home" ./zig-out/bin/plandalf nut export 1 >/dev/null 2>&1; then
+            echo 'removed nut command unexpectedly succeeded' >&2
+            exit 1
+          fi
+          if HOME="$first_home" ./zig-out/bin/plandalf sack import old.sack >/dev/null 2>&1; then
+            echo 'removed sack command unexpectedly succeeded' >&2
+            exit 1
+          fi
       - name: Test
         run: zig build test
       - name: Benchmark context
@@ -78,4 +88,4 @@ jobs:
       - name: Build native release binary
         run: zig build -Doptimize=ReleaseFast
       - name: Run release binary
-        run: ./zig-out/bin/deez --help >/dev/null
+        run: ./zig-out/bin/plandalf --help >/dev/null
