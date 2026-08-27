@@ -1,5 +1,8 @@
 .{
-    .name = .plandalf,
+    // Internal package identity remains stable during the product rename so the
+    // existing Zig package fingerprint stays valid. The built artifact and CLI
+    // are named `plandalf` in build.zig.
+    .name = .deez,
     .version = "0.1.0",
     .fingerprint = 0x7346b143bccbdc12, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
