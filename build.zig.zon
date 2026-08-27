@@ -1,0 +1,26 @@
+.{
+    .name = .deez,
+    .version = "0.1.0",
+    .fingerprint = 0x7346b143bccbdc12, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .bongo = .{
+            .url = "git+https://github.com/chrisbirster/bongo?ref=v0.6.0#1c7bdf9eb5b1c63236a432333a6b26d51d1a4ae5",
+            .hash = "bongo-0.6.0-H33KDXopCwDlrfKOVUebF5IEweq_CgsO9ioPKj_C-gu3",
+        },
+        .thrawn = .{
+            .url = "git+https://github.com/chrisbirster/thrawn#baeb98dce0dae0ec24f88f6ecec3f5f4cc033cdb",
+            .hash = "thrawn-0.3.0-dev-8rln6QHiAQB_eaY3xhlQjM-PFJ7_v0KPNgSDzngfFK1Z",
+        },
+        .httpz = .{
+            .url = "https://github.com/karlseguin/http.zig/archive/5432c5b4fbf10768ba0a6ca3481055ac2964fd9b.tar.gz",
+            .hash = "httpz-0.0.0-PNVzrIUDCQBpEYYfWjNoAZD8sIe_KbuIMt6c7hQ63NdJ",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "VERSION",
+        "src",
+    },
+}
