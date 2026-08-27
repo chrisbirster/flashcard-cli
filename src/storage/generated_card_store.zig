@@ -1,12 +1,10 @@
 const std = @import("std");
-const bongo = @import("bongo");
 
 const content = @import("../content.zig");
 const store_mod = @import("store.zig");
 const sqlite = @import("sqlite.zig");
 
 const c = sqlite.c;
-const q = bongo.query;
 
 fn prepare(db: *sqlite.Db, sql: [:0]const u8) !*c.sqlite3_stmt {
     var stmt: ?*c.sqlite3_stmt = null;
@@ -20,15 +18,6 @@ fn bindInt64(stmt: *c.sqlite3_stmt, index: c_int, value: i64) !void {
 
 fn bindText(stmt: *c.sqlite3_stmt, index: c_int, value: []const u8) !void {
     if (c.sqlite3_bind_text(stmt, index, value.ptr, @intCast(value.len), null) != c.SQLITE_OK) return error.SqliteBindFailed;
-}
-
-fn requiredI64(document: []const u8, field: []const u8) !i64 {
-    const value = (try bongo.bson.Reader.get(document, field)) orelse return error.MissingField;
-    return switch (value) {
-        .int32 => |v| v,
-        .int64 => |v| v,
-        else => error.InvalidField,
-    };
 }
 
 pub fn link(
@@ -51,14 +40,6 @@ pub fn link(
             try bindText(stmt, 4, generation_key);
             if (c.sqlite3_step(stmt) != c.SQLITE_DONE) return error.SqliteStepFailed;
         },
-        .mongodb => |*mongo| {
-            _ = try mongo.client.insertOne(mongo.client.databaseName(), "generated_cards", .{
-                ._id = @as(i64, @intCast(card_id)),
-                .note_id = @as(i64, @intCast(note_id)),
-                .template_ordinal = @as(i32, @intCast(template_ordinal)),
-                .generation_key = generation_key,
-            });
-        },
     }
 }
 
@@ -69,13 +50,6 @@ pub fn unlink(store: *store_mod.Store, card_id: u64) !void {
             defer _ = c.sqlite3_finalize(stmt);
             try bindInt64(stmt, 1, @intCast(card_id));
             if (c.sqlite3_step(stmt) != c.SQLITE_DONE) return error.SqliteStepFailed;
-        },
-        .mongodb => |*mongo| {
-            _ = try mongo.client.deleteOne(
-                mongo.client.databaseName(),
-                "generated_cards",
-                .{ ._id = @as(i64, @intCast(card_id)) },
-            );
         },
     }
 }
@@ -90,20 +64,6 @@ pub fn cardIdForKey(store: *store_mod.Store, generation_key: []const u8) !?u64 {
             if (result == c.SQLITE_DONE) break :blk null;
             if (result != c.SQLITE_ROW) return error.SqliteStepFailed;
             break :blk @intCast(c.sqlite3_column_int64(stmt, 0));
-        },
-        .mongodb => |*mongo| blk: {
-            var owned = (try mongo.client.findOne(
-                mongo.client.databaseName(),
-                "generated_cards",
-                .{ .generation_key = generation_key },
-            )) orelse break :blk null;
-            defer owned.deinit();
-            const value = (try bongo.bson.Reader.get(owned.bytes, "_id")) orelse return error.MissingField;
-            break :blk switch (value) {
-                .int32 => |v| @intCast(v),
-                .int64 => |v| @intCast(v),
-                else => error.InvalidField,
-            };
         },
     };
 }
@@ -129,30 +89,7 @@ pub fn cardIdsForNote(
             }
             return ids.toOwnedSlice(allocator);
         },
-        .mongodb => |*mongo| {
-            var cursor = try mongo.client.find(
-                mongo.client.databaseName(),
-                "generated_cards",
-                .{ .note_id = @as(i64, @intCast(note_id)) },
-                .{ .sort = .{ ._id = @as(i32, 1) } },
-            );
-            defer cursor.deinit();
-
-            var ids: std.ArrayList(u64) = .empty;
-            errdefer ids.deinit(allocator);
-            while (try cursor.next()) |document| {
-                try ids.append(allocator, @intCast(try requiredI64(document, "_id")));
-            }
-            return ids.toOwnedSlice(allocator);
-        },
     }
-}
-
-fn fieldsJson(allocator: std.mem.Allocator, fields: []const content.FieldValue) ![]u8 {
-    var out: std.Io.Writer.Allocating = .init(allocator);
-    errdefer out.deinit();
-    try std.json.Stringify.value(fields, .{}, &out.writer);
-    return out.toOwnedSlice();
 }
 
 pub fn updateNote(
@@ -163,6 +100,7 @@ pub fn updateNote(
     tags_json: []const u8,
     updated_at_ms: i64,
 ) !void {
+    _ = allocator;
     switch (store.*) {
         .sqlite => |db| {
             try db.beginImmediate();
@@ -190,22 +128,6 @@ pub fn updateNote(
             if (c.sqlite3_step(update_stmt) != c.SQLITE_DONE) return error.SqliteStepFailed;
             try db.commit();
         },
-        .mongodb => |*mongo| {
-            const fields_json = try fieldsJson(allocator, fields);
-            defer allocator.free(fields_json);
-            var result = try mongo.client.updateOne(
-                mongo.client.databaseName(),
-                "notes",
-                .{ ._id = @as(i64, @intCast(note_id)) },
-                q.set(.{
-                    .fields_json = fields_json,
-                    .tags_json = tags_json,
-                    .updated_at_ms = updated_at_ms,
-                }),
-                false,
-            );
-            defer result.deinit();
-        },
     }
 }
 
@@ -219,28 +141,6 @@ pub fn deleteNote(store: *store_mod.Store, note_id: content.NoteId) !void {
             defer _ = c.sqlite3_finalize(stmt);
             try bindInt64(stmt, 1, @intCast(note_id));
             if (c.sqlite3_step(stmt) != c.SQLITE_DONE) return error.SqliteStepFailed;
-        },
-        .mongodb => |*mongo| {
-            var cursor = try mongo.client.find(
-                mongo.client.databaseName(),
-                "generated_cards",
-                .{ .note_id = @as(i64, @intCast(note_id)) },
-                .{ .sort = .{ ._id = @as(i32, 1) } },
-            );
-            defer cursor.deinit();
-            while (try cursor.next()) |document| {
-                const card_id = try requiredI64(document, "_id");
-                _ = try mongo.client.deleteOne(
-                    mongo.client.databaseName(),
-                    "generated_cards",
-                    .{ ._id = card_id },
-                );
-            }
-            _ = try mongo.client.deleteOne(
-                mongo.client.databaseName(),
-                "notes",
-                .{ ._id = @as(i64, @intCast(note_id)) },
-            );
         },
     }
 }
