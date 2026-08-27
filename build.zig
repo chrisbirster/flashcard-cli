@@ -51,6 +51,9 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "plandalf", .module = mod },
+                // Temporary internal alias while implementation identifiers are
+                // migrated independently of the public Plandalf product name.
+                .{ .name = "deez", .module = mod },
             },
         }),
     });
@@ -70,28 +73,21 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "plandalf", .module = mod },
+                .{ .name = "deez", .module = mod },
             },
         }),
     });
     b.installArtifact(benchmark_exe);
     const benchmark_run = b.addRunArtifact(benchmark_exe);
-    const benchmark_step = b.step(
-        "benchmark",
-        "Run deterministic Plandalf benchmarks",
-    );
+    const benchmark_step = b.step("benchmark", "Run deterministic Plandalf benchmarks");
     benchmark_step.dependOn(&benchmark_run.step);
 
     const mod_tests = b.addTest(.{ .root_module = mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);
-
     const exe_tests = b.addTest(.{ .root_module = exe.root_module });
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
-
-    // The Plandalf application is SQLite-only. Legacy Mongo implementation
-    // modules remain temporarily in-tree while the public product surface is
-    // simplified, but there is no Mongo integration-test build target.
 }
