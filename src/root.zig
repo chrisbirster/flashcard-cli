@@ -28,8 +28,6 @@ pub const web = @import("web.zig");
 pub const web_cli = @import("web_cli.zig");
 pub const app = @import("app.zig");
 pub const server = @import("server.zig");
-pub const interchange = @import("interchange.zig");
-pub const interchange_import = @import("interchange_import.zig");
 pub const import = @import("import/root.zig");
 
 pub const Card = card.Card;
@@ -47,7 +45,6 @@ test {
     std.testing.refAllDecls(@This());
     _ = @import("thrawn_cli_test.zig");
     _ = @import("cli_tree_lifetime_test.zig");
-    _ = @import("interchange_test.zig");
     _ = @import("interaction_roundtrip_test.zig");
     _ = @import("study_replay_tests.zig");
     _ = @import("terminal_acceptance_test.zig");
