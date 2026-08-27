@@ -19,7 +19,7 @@ pub fn resolveRoot(init: std.process.Init, override: ?[]const u8) !?[]const u8 {
         return root;
     }
 
-    if (init.environ_map.get("DEEZ_WEB_ROOT")) |root| {
+    if (init.environ_map.get("PLANDALF_WEB_ROOT")) |root| {
         if (!try hasIndex(init.io, allocator, root)) return error.WebRootMissingIndex;
         return root;
     }
@@ -30,7 +30,7 @@ pub fn resolveRoot(init: std.process.Init, override: ?[]const u8) !?[]const u8 {
     const portable = try std.fs.path.join(allocator, &.{ executable_dir, "web" });
     if (try hasIndex(init.io, allocator, portable)) return portable;
 
-    const installed = try std.fs.path.join(allocator, &.{ executable_dir, "..", "share", "deez", "web" });
+    const installed = try std.fs.path.join(allocator, &.{ executable_dir, "..", "share", "plandalf", "web" });
     if (try hasIndex(init.io, allocator, installed)) return installed;
 
     return null;
