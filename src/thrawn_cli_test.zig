@@ -61,12 +61,12 @@ test "note add and edit own variadic fields" {
 test "deck interchange is .deck only" {
     const export_args = [_][]const u8{ "plandalf", "deck", "export", "7" };
     const exported = try parse(&export_args);
-    try std.testing.expectEqual(@as(u64, 7), exported.core.nut_export.deck_id);
+    try std.testing.expectEqual(@as(u64, 7), exported.core.deck_export.deck_id);
 
     const import_args = [_][]const u8{ "plandalf", "deck", "import", "zig.deck" };
     var imported = try parse(&import_args);
     defer imported.deinit(std.testing.allocator);
-    try std.testing.expectEqualStrings("zig.deck", imported.core.nut_import.path);
+    try std.testing.expectEqualStrings("zig.deck", imported.core.deck_import.path);
 
     const wrong_extension = [_][]const u8{ "plandalf", "deck", "import", "zig.json" };
     try std.testing.expectError(error.InvalidDeckFile, parse(&wrong_extension));
