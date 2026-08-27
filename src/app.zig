@@ -78,20 +78,16 @@ fn studyDeck(
     var session = study_mod.Session.init(study, deck_id, options);
     while (true) {
         const maybe_card = try session.next(allocator, nowMs(io));
-        if (maybe_card == null) {
-            try out.print("No cards due.\n", .{});
-            return;
-        }
-
+        if (maybe_card == null) break;
         const card = maybe_card.?;
         defer card.deinit(allocator);
-        try out.print("\n{s}\n\n[press enter to reveal]", .{card.question});
+
+        try out.print("\n{s}\n\nPress Enter to reveal...", .{card.question});
         try out.flush();
         try waitForEnter(io);
 
         const preview = try study.preview(allocator, card.id, nowMs(io));
-        try out.print("\n{s}\n\n", .{card.answer});
-        try out.print("1 Again  ", .{});
+        try out.print("\n{s}\n\n1 Again  ", .{card.answer});
         try printInterval(out, preview.schedule.again.interval_days);
         try out.print("\n2 Hard   ", .{});
         try printInterval(out, preview.schedule.hard.interval_days);
@@ -117,23 +113,12 @@ pub fn run(init: std.process.Init, command: cli.Command) !void {
     const io = init.io;
     const arena = init.arena.allocator();
     const selection = try config.resolve(init);
-
-    switch (selection.backend) {
-        .mongodb => {
-            const mongo = try storage.MongoStore.connect(io, allocator, selection.mongo_uri.?);
-            var store: storage.Store = .{ .mongodb = mongo };
-            defer store.deinit();
-            return runWithStore(allocator, io, command, &store);
-        },
-        .sqlite => {
-            const db_path_z = try arena.dupeZ(u8, selection.sqlite_path.?);
-            var db = try storage.Db.open(db_path_z);
-            defer db.close();
-            try db.migrate();
-            var store: storage.Store = .{ .sqlite = &db };
-            return runWithStore(allocator, io, command, &store);
-        },
-    }
+    const db_path_z = try arena.dupeZ(u8, selection.sqlite_path);
+    var db = try storage.Db.open(db_path_z);
+    defer db.close();
+    try db.migrate();
+    var store: storage.Store = .{ .sqlite = &db };
+    return runWithStore(allocator, io, command, &store);
 }
 
 fn runWithStore(
@@ -187,7 +172,7 @@ fn runWithStore(
         .deck_import => |args| {
             const bytes = try Io.Dir.cwd().readFileAlloc(io, args.path, allocator, .limited(64 * 1024 * 1024));
             defer allocator.free(bytes);
-            if (std.mem.endsWith(u8, args.path, ".nut")) {
+            if (std.mem.endsWith(u8, args.path, ".deck")) {
                 const result = try nut.importSlice(allocator, store, bytes, now_ms);
                 try out.print("Imported deck {d} ({d} cards).\n", .{ result.deck_id, result.card_count });
             } else {
