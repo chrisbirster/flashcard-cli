@@ -23,7 +23,7 @@ pub const ContentStore = struct {
 
     fn db(self: ContentStore) *sqlite.Db {
         return switch (self.store.*) {
-            .sqlite => |db| db,
+            .sqlite => |database| database,
         };
     }
 
@@ -186,7 +186,7 @@ test "notesForDeck deduplicates generated cards into logical notes" {
     defer std.testing.allocator.free(reverse_key);
     try generated_card_store.link(&store, reverse, note_id, 1, reverse_key);
 
-    const notes = try content_store.notesForDeck(std.testing.allocator, deck_id);
+    const notes = try content_store.notesForDeck(std.testing.allocator, &dest_store, imported.deck_id);
     defer {
         for (notes) |entry| entry.deinit(std.testing.allocator);
         std.testing.allocator.free(notes);
