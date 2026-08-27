@@ -1,9 +1,11 @@
 .{
-    .name = .deez,
+    .name = .plandalf,
     .version = "0.1.0",
     .fingerprint = 0x7346b143bccbdc12, // Changing this has security and trust implications.
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
+        // TODO: remove Bongo after the legacy Mongo store implementation is
+        // deleted. The Plandalf application itself is SQLite-only.
         .bongo = .{
             .url = "git+https://github.com/chrisbirster/bongo?ref=v0.6.0#1c7bdf9eb5b1c63236a432333a6b26d51d1a4ae5",
             .hash = "bongo-0.6.0-H33KDXopCwDlrfKOVUebF5IEweq_CgsO9ioPKj_C-gu3",
