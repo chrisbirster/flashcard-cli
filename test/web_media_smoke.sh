@@ -42,8 +42,8 @@ with open(sys.argv[1], 'wb') as f:
 PY
 
 media_ref=$(./zig-out/bin/plandalf media add "$tmp/pixel.png" | head -n 1)
-echo "$media_ref" | grep -Eq '^plandalf-media://sha256:[0-9a-f]{64}$'
-media_hash=${media_ref#plandalf-media://sha256:}
+echo "$media_ref" | grep -Eq '^deez-media://sha256:[0-9a-f]{64}$'
+media_hash=${media_ref#deez-media://sha256:}
 media_path="$HOME/.local/share/plandalf/media/sha256/${media_hash:0:2}/$media_hash"
 test -f "$media_path"
 
@@ -129,7 +129,7 @@ with open(sys.argv[1]) as f:
     body = json.load(f)
 expected = sys.argv[2]
 assert body['sha256'] == expected, body
-assert body['reference'] == f'plandalf-media://sha256:{expected}', body
+assert body['reference'] == f'deez-media://sha256:{expected}', body
 assert body['mime'] == 'application/octet-stream', body
 assert body['size'] == 2 * 1024 * 1024, body
 assert body['original_filename'] == 'upload.bin', body
