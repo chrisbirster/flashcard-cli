@@ -86,7 +86,7 @@ pub fn main(init: std.process.Init) !void {
         .rich_cli => {
             deez.rich_cli.run(init, args) catch |err| {
                 switch (err) {
-                    error.InvalidArguments, error.InvalidId, error.UnknownCommand => printErrorAndExit(init, err, .rich),
+                    error.InvalidArguments, error.UnknownCommand => printErrorAndExit(init, err, .rich),
                     else => return err,
                 }
             };
