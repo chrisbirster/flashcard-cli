@@ -5,7 +5,6 @@ const cli = @import("cli.zig");
 pub const Help = union(enum) {
     general,
     core: cli.HelpTopic,
-    backup,
     notes,
     rich,
 };
@@ -14,7 +13,6 @@ pub const Route = union(enum) {
     help: Help,
     setup,
     core: cli.Command,
-    backup_cli,
     notes_cli,
     rich_cli,
 
@@ -24,6 +22,7 @@ pub const Route = union(enum) {
                 .deck_add => |args| allocator.free(@constCast(args.name)),
                 .deck_rename => |args| allocator.free(@constCast(args.name)),
                 .deck_import => |args| allocator.free(@constCast(args.path)),
+                .nut_import => |args| allocator.free(@constCast(args.path)),
                 .note_add => |args| {
                     allocator.free(@constCast(args.note_type));
                     freeFields(allocator, args.fields);
@@ -119,11 +118,18 @@ fn deckDeleteHandler(ctx: *th.Context) !void {
     if (!ctx.hasOption("yes")) return error.ConfirmationRequired;
     try setRoute(ctx, .{ .core = .{ .deck_delete = .{ .deck_id = try parseId(ctx.args[0]) } } });
 }
-fn deckExportHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .deck_export = .{ .deck_id = try parseId(ctx.args[0]) } } }); }
+
+// The existing line-oriented serializer is retained internally while its public
+// name becomes simply `.deck`.
+fn deckExportHandler(ctx: *th.Context) !void {
+    try setRoute(ctx, .{ .core = .{ .nut_export = .{ .deck_id = try parseId(ctx.args[0]) } } });
+}
 fn deckImportHandler(ctx: *th.Context) !void {
     const path = try dupeText(ctx, 0); errdefer ctx.allocator.free(path);
-    try setRoute(ctx, .{ .core = .{ .deck_import = .{ .path = path } } });
+    if (!std.mem.endsWith(u8, path, ".deck")) return error.InvalidDeckFile;
+    try setRoute(ctx, .{ .core = .{ .nut_import = .{ .path = path } } });
 }
+
 fn noteAddHandler(ctx: *th.Context) !void {
     const note_type = try dupeText(ctx, 1); errdefer ctx.allocator.free(note_type);
     const fields = try ctx.dupeArguments(ctx.allocator, 2); errdefer freeFields(ctx.allocator, fields);
@@ -163,8 +169,6 @@ fn fsrsEvaluateHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{
 fn fsrsSimulateHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .{ .fsrs_simulate = .{ .retention = if (ctx.optionValue("retention")) |v| try parseFloat(v) else null } } }); }
 fn fsrsRetentionHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .fsrs_retention }); }
 fn schedulerListHandler(ctx: *th.Context) !void { try setRoute(ctx, .{ .core = .scheduler_list }); }
-fn backupHandler(ctx: *th.Context) !void { if (ctx.args.len == 1) _ = try parseId(ctx.args[0]); try setRoute(ctx, .backup_cli); }
-fn restoreHandler(ctx: *th.Context) !void { if (!ctx.hasOption("dry-run") and !ctx.hasOption("yes")) return error.ConfirmationRequired; try setRoute(ctx, .backup_cli); }
 fn mediaAddHandler(ctx: *th.Context) !void { _ = try requireText(ctx.args[0]); try setRoute(ctx, .rich_cli); }
 
 const help_command: th.Command = .{ .name = "help", .summary = "Show help", .handler = helpHandler, .args = .{ .positionals = &.{.{ .name = "topic", .required = false }} } };
@@ -200,9 +204,6 @@ const fsrs_retention_command: th.Command = .{ .name = "retention", .summary = "S
 const fsrs_command: th.Command = .{ .name = "fsrs", .summary = "FSRS tools", .children = &.{ &fsrs_optimize_command, &fsrs_evaluate_command, &fsrs_simulate_command, &fsrs_retention_command } };
 const scheduler_list_command: th.Command = .{ .name = "list", .summary = "List scheduler configuration", .handler = schedulerListHandler, .args = .{ .exact = 0 } };
 const scheduler_command: th.Command = .{ .name = "scheduler", .summary = "Inspect scheduler configuration", .children = &.{&scheduler_list_command} };
-
-const backup_command: th.Command = .{ .name = "backup", .summary = "Export a full-fidelity archive", .handler = backupHandler, .args = .{ .positionals = &.{.{ .name = "deck-id", .required = false }} } };
-const restore_command: th.Command = .{ .name = "restore", .summary = "Restore a full-fidelity archive", .handler = restoreHandler, .args = .{ .exact = 0 }, .options = &.{ .{ .long = "dry-run", .exclusive_group = "restore-mode" }, .{ .long = "yes", .exclusive_group = "restore-mode" } } };
 const media_add_command: th.Command = .{ .name = "add", .summary = "Add a media file", .handler = mediaAddHandler, .args = .{ .positionals = &.{.{ .name = "path" }} } };
 const media_command: th.Command = .{ .name = "media", .summary = "Manage media", .children = &.{&media_add_command} };
 
@@ -212,8 +213,7 @@ pub const root_command: th.Command = .{
     .children = &.{
         &help_command, &setup_command, &decks_command, &cards_command, &deck_command,
         &note_command, &notes_command, &card_command, &study_command, &stats_command,
-        &inspect_command, &fsrs_command, &scheduler_command, &backup_command,
-        &restore_command, &media_command,
+        &inspect_command, &fsrs_command, &scheduler_command, &media_command,
     },
 };
 
@@ -227,7 +227,6 @@ fn helpFor(command: *const th.Command) Help {
     if (command == &inspect_command) return .{ .core = .inspect };
     if (command == &fsrs_command or command == &fsrs_optimize_command or command == &fsrs_evaluate_command or command == &fsrs_simulate_command or command == &fsrs_retention_command) return .{ .core = .fsrs };
     if (command == &scheduler_command or command == &scheduler_list_command) return .{ .core = .scheduler };
-    if (command == &backup_command or command == &restore_command) return .backup;
     if (command == &notes_command) return .notes;
     if (command == &media_command or command == &media_add_command) return .rich;
     return .general;
@@ -265,7 +264,6 @@ pub fn parse(allocator: std.mem.Allocator, argv: []const []const u8) !Route {
 pub fn errorHelp(argv: []const []const u8) Help {
     if (argv.len < 2) return .general;
     const command = argv[1];
-    if (std.mem.eql(u8, command, "backup") or std.mem.eql(u8, command, "restore")) return .backup;
     if (std.mem.eql(u8, command, "notes")) return .notes;
     if (std.mem.eql(u8, command, "media")) return .rich;
     return .general;
