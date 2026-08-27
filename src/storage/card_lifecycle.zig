@@ -1,12 +1,9 @@
 const std = @import("std");
-const bongo = @import("bongo");
 
 const card_mod = @import("../card.zig");
 const sqlite = @import("sqlite.zig");
-const mongodb = @import("mongodb.zig");
 
 const c = sqlite.c;
-const q = bongo.query;
 
 fn ensureSqliteSchema(db: *sqlite.Db) !void {
     const sql =
@@ -63,40 +60,6 @@ pub fn sqliteIsRetired(db: *sqlite.Db, card_id: card_mod.CardId) !bool {
         c.SQLITE_DONE => false,
         else => error.SqliteStepFailed,
     };
-}
-
-fn mongoId(card_id: card_mod.CardId) !i64 {
-    return std.math.cast(i64, card_id) orelse error.IdOutOfRange;
-}
-
-pub fn mongoRetire(store: *mongodb.Store, card_id: card_mod.CardId, retired_at_ms: i64) !void {
-    const id = try mongoId(card_id);
-    var result = try store.client.updateOne(
-        store.client.databaseName(),
-        "retired_cards",
-        .{ ._id = id },
-        q.set(.{ .retired_at_ms = retired_at_ms }),
-        true,
-    );
-    defer result.deinit();
-}
-
-pub fn mongoRestore(store: *mongodb.Store, card_id: card_mod.CardId) !void {
-    _ = try store.client.deleteOne(
-        store.client.databaseName(),
-        "retired_cards",
-        .{ ._id = try mongoId(card_id) },
-    );
-}
-
-pub fn mongoIsRetired(store: *mongodb.Store, card_id: card_mod.CardId) !bool {
-    var owned = (try store.client.findOne(
-        store.client.databaseName(),
-        "retired_cards",
-        .{ ._id = try mongoId(card_id) },
-    )) orelse return false;
-    defer owned.deinit();
-    return true;
 }
 
 test "SQLite retirement is reversible without deleting the card" {
