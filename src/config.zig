@@ -63,6 +63,6 @@ test "default SQLite path is under Plandalf local share" {
 }
 
 test "Plandalf always resolves SQLite storage" {
-    // The application no longer accepts backend-selection configuration.
-    try std.testing.expectEqual(Backend.sqlite, Selection{}.backend);
+    const selection: Selection = .{};
+    try std.testing.expectEqual(Backend.sqlite, selection.backend);
 }
