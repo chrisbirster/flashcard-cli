@@ -4,16 +4,14 @@ const deez = @import("deez");
 
 fn writeHelp(out: *Io.Writer, target: deez.thrawn_cli.Help) !void {
     switch (target) {
-        .general => try out.print("{s}\n{s}\n{s}\n{s}\n{s}\n{s}", .{
+        .general => try out.print("{s}\n{s}\n{s}\n{s}\n{s}", .{
             deez.cli.help_text,
             deez.notes_cli.help_text,
-            deez.backup_cli.help_text,
             deez.rich_cli.help_text,
             deez.web_cli.help_text,
             deez.server.help_text,
         }),
         .core => |topic| try out.writeAll(deez.cli.helpText(topic)),
-        .backup => try out.writeAll(deez.backup_cli.help_text),
         .notes => try out.writeAll(deez.notes_cli.help_text),
         .rich => try out.writeAll(deez.rich_cli.help_text),
     }
@@ -23,7 +21,7 @@ fn printErrorAndExit(init: std.process.Init, err: anyerror, help: deez.thrawn_cl
     var stderr_buffer: [16384]u8 = undefined;
     var stderr_file_writer: Io.File.Writer = .init(.stderr(), init.io, &stderr_buffer);
     const stderr = &stderr_file_writer.interface;
-    stderr.print("deez: {s}\n\n", .{@errorName(err)}) catch {};
+    stderr.print("plandalf: {s}\n\n", .{@errorName(err)}) catch {};
     writeHelp(stderr, help) catch {};
     stderr.flush() catch {};
     std.process.exit(2);
@@ -33,7 +31,7 @@ fn printRawErrorAndExit(init: std.process.Init, err: anyerror, help: []const u8)
     var stderr_buffer: [16384]u8 = undefined;
     var stderr_file_writer: Io.File.Writer = .init(.stderr(), init.io, &stderr_buffer);
     const stderr = &stderr_file_writer.interface;
-    stderr.print("deez: {s}\n\n{s}", .{ @errorName(err), help }) catch {};
+    stderr.print("plandalf: {s}\n\n{s}", .{ @errorName(err), help }) catch {};
     stderr.flush() catch {};
     std.process.exit(2);
 }
@@ -44,17 +42,6 @@ fn printHelp(init: std.process.Init, help: deez.thrawn_cli.Help) !void {
     const out = &stdout_file_writer.interface;
     defer out.flush() catch {};
     try writeHelp(out, help);
-}
-
-fn isBackupUsageError(err: anyerror) bool {
-    return switch (err) {
-        error.InvalidArguments,
-        error.InvalidId,
-        error.ConfirmationRequired,
-        error.UnknownCommand,
-        => true,
-        else => false,
-    };
 }
 
 pub fn main(init: std.process.Init) !void {
@@ -88,12 +75,6 @@ pub fn main(init: std.process.Init) !void {
         .help => |help| try printHelp(init, help),
         .setup => try deez.config.setup(init),
         .core => |command| try deez.app.run(init, command),
-        .backup_cli => {
-            deez.backup_cli.run(init, args) catch |err| {
-                if (isBackupUsageError(err)) printErrorAndExit(init, err, .backup);
-                return err;
-            };
-        },
         .notes_cli => {
             deez.notes_cli.run(init, args) catch |err| {
                 switch (err) {
