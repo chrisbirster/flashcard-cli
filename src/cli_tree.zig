@@ -86,6 +86,15 @@ fn parseStudyOrder(text: []const u8) !cli.StudyOrder {
     return error.InvalidStudyOrder;
 }
 
+fn parseStatsWindow(text: []const u8) !cli.StatsWindow {
+    if (std.mem.eql(u8, text, "all")) return .all;
+    if (std.mem.eql(u8, text, "today")) return .today;
+    if (std.mem.eql(u8, text, "week")) return .week;
+    if (std.mem.eql(u8, text, "month")) return .month;
+    if (std.mem.eql(u8, text, "year")) return .year;
+    return error.InvalidStatsWindow;
+}
+
 fn parseHelpTopic(text: []const u8) !cli.HelpTopic {
     if (std.mem.eql(u8, text, "deck") or std.mem.eql(u8, text, "decks")) return .deck;
     if (std.mem.eql(u8, text, "note") or std.mem.eql(u8, text, "notes")) return .note;
@@ -178,7 +187,11 @@ fn studyHandler(ctx: *th.Context) !void {
     } } });
 }
 fn statsHandler(ctx: *th.Context) !void {
-    try setRoute(ctx, .{ .core = .{ .stats = .{ .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null, .json = ctx.hasOption("json") } } });
+    try setRoute(ctx, .{ .core = .{ .stats = .{
+        .deck_id = if (ctx.args.len == 1) try parseId(ctx.args[0]) else null,
+        .json = ctx.hasOption("json"),
+        .window = if (ctx.optionValue("period")) |value| try parseStatsWindow(value) else .all,
+    } } });
 }
 fn inspectHandler(ctx: *th.Context) !void {
     try setRoute(ctx, .{ .core = .{ .inspect = .{ .card_id = try parseId(ctx.args[0]), .json = ctx.hasOption("json") } } });
@@ -226,7 +239,7 @@ const card_delete_command: th.Command = .{ .name = "delete", .summary = "Delete 
 const card_command: th.Command = .{ .name = "card", .summary = "Manage cards", .children = &.{ &card_add_command, &card_edit_command, &card_delete_command } };
 
 const study_command: th.Command = .{ .name = "study", .summary = "Study a deck", .handler = studyHandler, .args = .{ .positionals = &.{.{ .name = "deck-id" }} }, .options = &.{ .{ .long = "new-limit", .kind = .value, .value_type = .integer, .value_name = "count", .summary = "Limit new cards" }, .{ .long = "order", .kind = .value, .value_type = .choice, .value_name = "order", .choices = &.{ "due", "reviews-first", "new-first" }, .summary = "Study queue order" }, .{ .long = "shuffle", .summary = "Shuffle the session" } } };
-const stats_command: th.Command = .{ .name = "stats", .summary = "Show study statistics", .handler = statsHandler, .args = .{ .positionals = &.{.{ .name = "deck-id", .required = false }} }, .options = &.{.{ .long = "json", .summary = "Emit JSON" }} };
+const stats_command: th.Command = .{ .name = "stats", .summary = "Show study statistics", .handler = statsHandler, .args = .{ .positionals = &.{.{ .name = "deck-id", .required = false }} }, .options = &.{ .{ .long = "period", .kind = .value, .value_type = .choice, .value_name = "period", .choices = &.{ "all", "today", "week", "month", "year" }, .summary = "Historical review window" }, .{ .long = "json", .summary = "Emit JSON" } } };
 const inspect_command: th.Command = .{ .name = "inspect", .summary = "Inspect scheduler state", .handler = inspectHandler, .args = .{ .positionals = &.{.{ .name = "card-id" }} }, .options = &.{.{ .long = "json", .summary = "Emit JSON" }} };
 
 const fsrs_optimize_command: th.Command = .{ .name = "optimize", .summary = "Optimize FSRS parameters", .handler = fsrsOptimizeHandler, .args = .{ .positionals = &.{.{ .name = "deck-id", .required = false }} }, .options = &.{.{ .long = "recency", .summary = "Use recency weighting" }} };

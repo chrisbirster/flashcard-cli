@@ -9,6 +9,8 @@ const fsrs = @import("fsrs/root.zig");
 const storage = @import("storage/root.zig");
 const study_mod = @import("study.zig");
 
+const milliseconds_per_day: i64 = 86_400_000;
+
 fn nowMs(io: Io) i64 {
     const seconds = Io.Timestamp.now(io, .real).toSeconds();
     return seconds * 1_000;
@@ -64,6 +66,46 @@ fn baseParameters(store: *storage.Store, deck_id: ?u64, now_ms: i64) !fsrs.v7.Pa
         return store.loadFsrs7Parameters(resolved.parameter_set_id);
     }
     return .{};
+}
+
+fn statsWindowName(window: cli.StatsWindow) []const u8 {
+    return switch (window) {
+        .all => "all",
+        .today => "today",
+        .week => "week",
+        .month => "month",
+        .year => "year",
+    };
+}
+
+fn statsStart(window: cli.StatsWindow, now_ms: i64) ?i64 {
+    const today_start = @divFloor(now_ms, milliseconds_per_day) * milliseconds_per_day;
+    return switch (window) {
+        .all => null,
+        .today => today_start,
+        .week => today_start - 6 * milliseconds_per_day,
+        .month => today_start - 29 * milliseconds_per_day,
+        .year => today_start - 364 * milliseconds_per_day,
+    };
+}
+
+fn historicalStats(
+    allocator: std.mem.Allocator,
+    store: *storage.Store,
+    deck_id: ?u64,
+    window: cli.StatsWindow,
+    now_ms: i64,
+) !storage.HistoricalStats {
+    const start_ms = statsStart(window, now_ms);
+    const end_ms_exclusive = now_ms + 1;
+    return switch (store.*) {
+        .sqlite => |db| (storage.HistoryReport{ .db = db }).historical(
+            allocator,
+            deck_id,
+            start_ms,
+            end_ms_exclusive,
+        ),
+    };
 }
 
 fn studyDeck(
@@ -208,12 +250,25 @@ fn runWithStore(
         }),
         .stats => |args| {
             const stats = try store.stats(now_ms, args.deck_id);
+            const history = try historicalStats(allocator, store, args.deck_id, args.window, now_ms);
             if (args.json) {
-                try out.print("{{\"decks\":{d},\"cards\":{d},\"due\":{d},\"reviews\":{d}}}\n", .{
+                try out.print("{{\"decks\":{d},\"cards\":{d},\"due\":{d},\"reviews\":{d},\"period\":\"{s}\",\"history_reviews\":{d},\"unique_cards\":{d},\"new_cards\":{d},\"again\":{d},\"hard\":{d},\"good\":{d},\"easy\":{d},\"days_studied\":{d},\"current_streak_days\":{d},\"longest_streak_days\":{d},\"observed_retention\":{d}}}\n", .{
                     stats.deck_count,
                     stats.card_count,
                     stats.due_count,
                     stats.review_count,
+                    statsWindowName(args.window),
+                    history.review_count,
+                    history.unique_cards,
+                    history.new_cards,
+                    history.again,
+                    history.hard,
+                    history.good,
+                    history.easy,
+                    history.days_studied,
+                    history.current_streak_days,
+                    history.longest_streak_days,
+                    history.observedRetention(),
                 });
             } else {
                 try out.print("Decks: {d}\nCards: {d}\nDue: {d}\nReviews: {d}\n", .{
@@ -221,6 +276,20 @@ fn runWithStore(
                     stats.card_count,
                     stats.due_count,
                     stats.review_count,
+                });
+                try out.print("\nReview history ({s})\nReviews: {d}\nUnique cards: {d}\nNew cards introduced: {d}\nAgain: {d}\nHard: {d}\nGood: {d}\nEasy: {d}\nRecall rate: {d:.2}%\nDays studied: {d}\nCurrent streak: {d} days\nLongest streak: {d} days\n", .{
+                    statsWindowName(args.window),
+                    history.review_count,
+                    history.unique_cards,
+                    history.new_cards,
+                    history.again,
+                    history.hard,
+                    history.good,
+                    history.easy,
+                    history.observedRetention() * 100.0,
+                    history.days_studied,
+                    history.current_streak_days,
+                    history.longest_streak_days,
                 });
             }
         },
@@ -295,11 +364,14 @@ fn runWithStore(
             const views = try historyViews(allocator, owned);
             defer allocator.free(views);
             const parameters = try baseParameters(store, args.deck_id, now_ms);
-            const metrics = try fsrs.v7.evaluator.evaluate(views, parameters, .{});
-            try out.print("Examples: {d}\nLog loss: {d:.6}\nRMSE: {d:.6}\nCalibration error: {d:.6}\n", .{
+            const metrics: fsrs.EvaluationMetrics = try fsrs.v7.evaluator.evaluate(views, parameters, .{});
+            try out.print("Examples: {d}\nLog loss: {d:.6}\nBrier score: {d:.6}\nRMSE: {d:.6}\nMean predicted recall: {d:.2}%\nMean observed recall: {d:.2}%\nCalibration error: {d:.6}\n", .{
                 metrics.examples,
                 metrics.log_loss,
+                metrics.brier_score,
                 metrics.rmse,
+                metrics.mean_predicted * 100.0,
+                metrics.mean_observed * 100.0,
                 metrics.calibration_error,
             });
         },
