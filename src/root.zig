@@ -14,6 +14,7 @@ pub const render = @import("render.zig");
 pub const media = @import("media.zig");
 pub const rich_cli = @import("rich_cli.zig");
 pub const author_cli = @import("author_cli.zig");
+pub const edit_cli = @import("edit_cli.zig");
 pub const review = @import("review.zig");
 pub const fsrs = @import("fsrs/root.zig");
 pub const storage = @import("storage/root.zig");

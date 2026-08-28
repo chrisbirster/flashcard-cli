@@ -48,12 +48,18 @@ plandalf deck rename <deck-id> <name>
 plandalf deck delete <deck-id> --yes
 plandalf deck export <deck-id> > deck.deck
 plandalf deck import <deck.deck>
+plandalf add [deck-id]
+plandalf edit [deck-id] [note-id]
+plandalf note add [deck-id]
+plandalf note edit [deck-id] [note-id]
 plandalf note add <deck-id> <note-type> <fields...>
 plandalf note edit <deck-id> <note-id> <fields...>
 plandalf card add <deck-id> <question> <answer>
 plandalf card edit <card-id> <question> <answer>
 plandalf card delete <card-id> --yes
 ```
+
+`plandalf add` and `plandalf edit` are the human-facing interactive flows. Guided editing shows the current values, lets Enter keep an existing value, previews the regenerated cards, and asks for confirmation before saving. Supplying all note fields keeps the deterministic non-interactive form for scripts.
 
 A deck is the top-level content container. Cards belong to exactly one deck. Destructive operations require explicit `--yes` intent.
 
