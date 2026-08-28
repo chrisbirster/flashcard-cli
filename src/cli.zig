@@ -65,6 +65,7 @@ pub const help_text =
     \\Usage:
     \\  plandalf setup
     \\  plandalf help [deck|note|card|study|stats|inspect|fsrs|scheduler]
+    \\  plandalf add [deck-id]
     \\  plandalf decks
     \\  plandalf cards <deck-id>
     \\  plandalf deck add <name>
@@ -72,7 +73,8 @@ pub const help_text =
     \\  plandalf deck delete <deck-id> --yes
     \\  plandalf deck export <deck-id> > deck.deck
     \\  plandalf deck import <deck.deck>
-    \\  plandalf note add <deck-id> <basic|reverse|optional-reverse|cloze|type-answer> <fields...>
+    \\  plandalf note add [deck-id]
+    \\  plandalf note add <deck-id> <note-type> <fields...>
     \\  plandalf note edit <deck-id> <note-id> <fields...>
     \\  plandalf card add <deck-id> <question> <answer>
     \\  plandalf card edit <card-id> <question> <answer>
@@ -101,11 +103,16 @@ const deck_help =
 
 const note_help =
     \\Note commands:
+    \\  plandalf add [deck-id]                         Guided note authoring
+    \\  plandalf note add [deck-id]                    Guided note authoring
     \\  plandalf note add <deck-id> basic <front> <back>
     \\  plandalf note add <deck-id> reverse <front> <back>
-    \\  plandalf note add <deck-id> optional-reverse <front> <back> <add-reverse>
     \\  plandalf note add <deck-id> cloze <text> <extra>
     \\  plandalf note add <deck-id> type-answer <front> <back>
+    \\  plandalf note add <deck-id> multiple-choice <prompt> <choices-json> <correct> <explanation>
+    \\  plandalf note add <deck-id> multiple-select <prompt> <choices-json> <correct-json> <explanation>
+    \\  plandalf note add <deck-id> ordering <prompt> <items-json> <explanation>
+    \\  plandalf note add <deck-id> image-occlusion <image-ref> <masks-json> <extra>
     \\  plandalf note edit <deck-id> <note-id> <fields...>
 ;
 

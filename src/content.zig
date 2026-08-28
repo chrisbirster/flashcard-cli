@@ -51,10 +51,10 @@ pub const BuiltInNoteType = enum {
         };
     }
 
+    /// Parse a note type that can be authored by current Plandalf clients.
     pub fn parse(text: []const u8) !BuiltInNoteType {
         if (std.mem.eql(u8, text, "basic")) return .basic;
         if (std.mem.eql(u8, text, "reverse") or std.mem.eql(u8, text, "basic-reverse")) return .basic_reverse;
-        if (std.mem.eql(u8, text, "optional-reverse")) return .optional_reverse;
         if (std.mem.eql(u8, text, "cloze")) return .cloze;
         if (std.mem.eql(u8, text, "type-answer") or std.mem.eql(u8, text, "type")) return .type_answer;
         if (std.mem.eql(u8, text, "multiple-choice") or std.mem.eql(u8, text, "mcq")) return .multiple_choice;
@@ -62,6 +62,12 @@ pub const BuiltInNoteType = enum {
         if (std.mem.eql(u8, text, "ordering") or std.mem.eql(u8, text, "order")) return .ordering;
         if (std.mem.eql(u8, text, "image-occlusion") or std.mem.eql(u8, text, "occlusion")) return .image_occlusion;
         return error.UnknownNoteType;
+    }
+
+    /// Parse persisted/interchange data from releases that exposed optional-reverse.
+    pub fn parseStored(text: []const u8) !BuiltInNoteType {
+        if (std.mem.eql(u8, text, "optional-reverse")) return .optional_reverse;
+        return parse(text);
     }
 };
 
@@ -171,6 +177,7 @@ pub const basic_reverse_note_type: NoteTypeDefinition = .{
     .templates = &reverse_templates,
 };
 
+// ID 3 is retained only so v0.1.0 databases and .deck files remain readable.
 const optional_reverse_fields = [_]FieldDefinition{
     .{ .ordinal = 0, .name = "Front" },
     .{ .ordinal = 1, .name = "Back" },
@@ -291,10 +298,10 @@ pub const image_occlusion_note_type: NoteTypeDefinition = .{
     .templates = &image_occlusion_templates,
 };
 
+/// Note types exposed for new authoring and client capability discovery.
 pub const built_in_note_types = [_]NoteTypeDefinition{
     basic_note_type,
     basic_reverse_note_type,
-    optional_reverse_note_type,
     cloze_note_type,
     type_answer_note_type,
     multiple_choice_note_type,
@@ -347,15 +354,24 @@ pub fn validateNoteType(definition: NoteTypeDefinition) !void {
     }
 }
 
-test "built in note types are valid and stable" {
-    for (built_in_note_types, 1..) |definition, id| {
+test "authorable built in note types are valid and preserve stable ids" {
+    const expected_ids = [_]NoteTypeId{ 1, 2, 4, 5, 6, 7, 8, 9 };
+    try std.testing.expectEqual(expected_ids.len, built_in_note_types.len);
+    for (built_in_note_types, expected_ids) |definition, id| {
         try validateNoteType(definition);
-        try std.testing.expectEqual(@as(NoteTypeId, id), definition.id);
+        try std.testing.expectEqual(id, definition.id);
+        try std.testing.expect(!std.mem.eql(u8, definition.slug, "optional-reverse"));
     }
     try std.testing.expectEqualStrings("Front", basic_note_type.fields[0].name);
     try std.testing.expectEqualStrings("Text", cloze_note_type.fields[0].name);
     try std.testing.expectEqualStrings("Choices", multiple_choice_note_type.fields[1].name);
     try std.testing.expectEqualStrings("Masks", image_occlusion_note_type.fields[1].name);
+}
+
+test "legacy optional reverse remains readable but is not authorable" {
+    try std.testing.expectError(error.UnknownNoteType, BuiltInNoteType.parse("optional-reverse"));
+    try std.testing.expectEqual(BuiltInNoteType.optional_reverse, try BuiltInNoteType.parseStored("optional-reverse"));
+    try std.testing.expectEqual(BuiltInNoteType.optional_reverse, try BuiltInNoteType.fromId(3));
 }
 
 test "generation keys are stable by note and template" {
