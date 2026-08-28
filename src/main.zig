@@ -4,9 +4,10 @@ const plandalf = @import("plandalf");
 
 fn writeHelp(out: *Io.Writer, target: plandalf.thrawn_cli.Help) !void {
     switch (target) {
-        .general => try out.print("{s}\n{s}\n{s}\n{s}\n{s}\n{s}", .{
+        .general => try out.print("{s}\n{s}\n{s}\n{s}\n{s}\n{s}\n{s}", .{
             plandalf.cli.help_text,
             plandalf.author_cli.help_text,
+            plandalf.edit_cli.help_text,
             plandalf.notes_cli.help_text,
             plandalf.rich_cli.help_text,
             plandalf.web_cli.help_text,
@@ -78,6 +79,22 @@ pub fn main(init: std.process.Init) !void {
         plandalf.author_cli.run(init, args) catch |err| {
             switch (err) {
                 error.InvalidArguments, error.InvalidId, error.DeckNotFound => printRawErrorAndExit(init, err, plandalf.author_cli.help_text),
+                else => return err,
+            }
+        };
+        return;
+    }
+
+    if (plandalf.edit_cli.isCommand(args)) {
+        plandalf.edit_cli.run(init, args) catch |err| {
+            switch (err) {
+                error.InvalidArguments,
+                error.InvalidId,
+                error.DeckNotFound,
+                error.NoteNotFound,
+                error.NoDecks,
+                error.NoEditableNotes,
+                => printRawErrorAndExit(init, err, plandalf.edit_cli.help_text),
                 else => return err,
             }
         };
