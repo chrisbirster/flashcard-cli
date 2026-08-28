@@ -15,7 +15,7 @@ Plandalf keeps the application deliberately local and simple:
 
 ## Install
 
-Plandalf releases are standalone native archives. The initial supported release targets are:
+Plandalf releases are native archives. The initial supported release targets are:
 
 - Linux x86_64
 - macOS Apple Silicon (aarch64)
@@ -33,6 +33,8 @@ plandalf --help
 ```
 
 Every release also publishes `SHA256SUMS` so the downloaded archive can be verified before installation.
+
+Plandalf currently links against the platform SQLite library. macOS provides SQLite with the operating system. Linux users need a compatible SQLite runtime library installed (for example the distro package that provides `libsqlite3.so`). Linux release artifacts are built on GitHub's Ubuntu runner, so fully static/musl portability is not claimed yet.
 
 Windows is not advertised as supported until a native Windows build and smoke test are part of CI.
 
