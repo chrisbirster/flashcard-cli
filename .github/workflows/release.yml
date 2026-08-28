@@ -1,0 +1,146 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (must match VERSION, for example v0.1.0)
+        required: true
+        default: v0.1.0
+        type: string
+      prerelease:
+        description: Mark the GitHub release as a prerelease
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build-${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: macos-x86_64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: Validate release identity
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          expected="v${version}"
+          if [[ "$REQUESTED_TAG" != "$expected" ]]; then
+            echo "release tag '$REQUESTED_TAG' does not match VERSION '$version' (expected '$expected')" >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF_NAME" != "main" ]]; then
+            echo "manual releases must be dispatched from the main branch" >&2
+            exit 1
+          fi
+
+      - name: Install SQLite headers
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! dpkg -s libsqlite3-dev >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y libsqlite3-dev
+          fi
+
+      - name: Build release binary
+        run: zig build -Doptimize=ReleaseFast
+
+      - name: Smoke release binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./zig-out/bin/plandalf --help >/dev/null
+          release_home="$(mktemp -d)"
+          HOME="$release_home" ./zig-out/bin/plandalf decks </dev/null >/dev/null
+          test -f "$release_home/.local/share/plandalf/plandalf.db"
+
+      - name: Package release archive
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          archive="plandalf-${REQUESTED_TAG}-${PLATFORM}.tar.gz"
+          mkdir -p package
+          cp zig-out/bin/plandalf package/plandalf
+          cp LICENSE package/LICENSE
+          cp README.md package/README.md
+          tar -czf "$archive" -C package plandalf LICENSE README.md
+          shasum -a 256 "$archive"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plandalf-${{ matrix.platform }}
+          path: plandalf-*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: plandalf-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          INPUT_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+        run: |
+          set -euo pipefail
+          cd dist
+          test "$(find . -maxdepth 1 -name '*.tar.gz' | wc -l | tr -d ' ')" = "3"
+          shasum -a 256 ./*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+          flags=()
+          if [[ "$INPUT_PRERELEASE" == "true" || "$REQUESTED_TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+
+          gh release create "$REQUESTED_TAG" \
+            ./*.tar.gz \
+            SHA256SUMS \
+            --target "$GITHUB_SHA" \
+            --title "Plandalf ${REQUESTED_TAG#v}" \
+            --generate-notes \
+            "${flags[@]}"
