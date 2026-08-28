@@ -157,9 +157,9 @@ test "historical stats preserve rating counts and streaks" {
     const card_b = try db.createCard(deck_id, "b", "b", 0);
     const day = time.milliseconds_per_day;
 
-    try db.appendReview(card_a, .good, day, .{ .algorithm = .fsrs7, .implementation = .current, .parameter_set_id = [_]u8{0} ** 32 }, day * 2);
-    try db.appendReview(card_b, .again, day * 2, .{ .algorithm = .fsrs7, .implementation = .current, .parameter_set_id = [_]u8{0} ** 32 }, day * 3);
-    try db.appendReview(card_a, .easy, day * 2, .{ .algorithm = .fsrs7, .implementation = .current, .parameter_set_id = [_]u8{0} ** 32 }, day * 4);
+    _ = try db.appendReview(card_a, .good, day, null, null);
+    _ = try db.appendReview(card_b, .again, day * 2, null, null);
+    _ = try db.appendReview(card_a, .easy, day * 2, null, null);
 
     const report: HistoryReport = .{ .db = &db };
     const result = try report.historical(std.testing.allocator, deck_id, null, day * 3);
