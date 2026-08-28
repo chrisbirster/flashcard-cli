@@ -189,7 +189,7 @@ test "historical stats creates the time-range analytics index for existing datab
 
     var error_message: [*c]u8 = null;
     const drop_sql = "DROP INDEX IF EXISTS reviews_time_card_rating_idx;";
-    try std.testing.expectEqual(c.SQLITE_OK, c.sqlite3_exec(db.handle, drop_sql.ptr, null, null, &error_message));
+    try std.testing.expectEqual(c.SQLITE_OK, c.sqlite3_exec(@ptrCast(db.handle), drop_sql.ptr, null, null, &error_message));
     if (error_message != null) c.sqlite3_free(error_message);
 
     const report: HistoryReport = .{ .db = &db };
