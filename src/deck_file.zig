@@ -60,7 +60,7 @@ fn validateCard(record: CardRecord) !void {
 
 fn validateNote(record: NoteRecordInput) !void {
     if (!std.mem.eql(u8, record.kind, note_kind)) return error.InvalidDeckRecord;
-    _ = try @import("content.zig").BuiltInNoteType.parse(record.note_type);
+    _ = try @import("content.zig").BuiltInNoteType.parseStored(record.note_type);
     if (record.fields.len == 0) return error.InvalidFieldCount;
 }
 
@@ -235,4 +235,17 @@ test ".deck v2 cloze round trip preserves logical note" {
     }
     try std.testing.expectEqual(@as(usize, 1), notes.len);
     try std.testing.expectEqualStrings("cloze", notes[0].note_type);
+}
+
+test ".deck v2 legacy optional reverse remains importable" {
+    var db = try storage.Db.open(":memory:");
+    defer db.close();
+    try db.migrate();
+    var store: storage.Store = .{ .sqlite = &db };
+    const source =
+        \\{"kind":"deck","format":"plandalf.deck","version":2,"name":"Legacy optional reverse"}
+        \\{"kind":"note","note_type":"optional-reverse","fields":["primary","secondary","yes"],"tags_json":"[]"}
+    ;
+    const result = try importSlice(std.testing.allocator, &store, source, 0);
+    try std.testing.expectEqual(@as(usize, 2), result.card_count);
 }
