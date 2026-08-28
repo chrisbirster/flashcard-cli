@@ -1,51 +1,19 @@
 const std = @import("std");
 const HistoryEntry = @import("../history.zig").Entry;
+const evaluation = @import("../evaluation.zig");
 const time = @import("../../time.zig");
 const model = @import("model.zig");
 const Parameters = @import("parameters.zig").Parameters;
 
-pub const calibration_bin_count = 10;
+pub const calibration_bin_count = evaluation.calibration_bin_count;
+pub const CalibrationBin = evaluation.CalibrationBin;
+pub const Metrics = evaluation.Metrics;
+pub const Comparison = evaluation.Comparison;
 
 pub const Options = struct {
     recency_half_life_days: ?f64 = null,
     evaluation_start_ms: ?time.TimestampMs = null,
     evaluation_end_ms_exclusive: ?time.TimestampMs = null,
-};
-
-pub const CalibrationBin = struct {
-    count: usize = 0,
-    weight: f64 = 0,
-    predicted_sum: f64 = 0,
-    observed_sum: f64 = 0,
-
-    pub fn meanPredicted(self: CalibrationBin) f64 {
-        return if (self.weight > 0) self.predicted_sum / self.weight else 0;
-    }
-
-    pub fn meanObserved(self: CalibrationBin) f64 {
-        return if (self.weight > 0) self.observed_sum / self.weight else 0;
-    }
-};
-
-pub const Metrics = struct {
-    examples: usize = 0,
-    effective_weight: f64 = 0,
-    log_loss: f64 = 0,
-    brier_score: f64 = 0,
-    rmse: f64 = 0,
-    mean_predicted: f64 = 0,
-    mean_observed: f64 = 0,
-    calibration_error: f64 = 0,
-    bins: [calibration_bin_count]CalibrationBin = [_]CalibrationBin{.{}} ** calibration_bin_count,
-};
-
-pub const Comparison = struct {
-    baseline: Metrics,
-    candidate: Metrics,
-
-    pub fn logLossImprovement(self: Comparison) f64 {
-        return self.baseline.log_loss - self.candidate.log_loss;
-    }
 };
 
 fn probability(value: f64) f64 {
