@@ -13,6 +13,29 @@ Plandalf keeps the application deliberately local and simple:
 - local web UI/API bound to loopback
 - one shareable deck format: `.deck`
 
+## Install
+
+Plandalf releases are standalone native archives. The initial supported release targets are:
+
+- Linux x86_64
+- macOS Apple Silicon (aarch64)
+- macOS Intel (x86_64)
+
+Download the archive for your platform from GitHub Releases, extract it, and put `plandalf` somewhere on your `PATH`.
+
+For example:
+
+```bash
+tar -xzf plandalf-v0.1.0-<platform>.tar.gz
+mkdir -p ~/.local/bin
+install -m 0755 plandalf ~/.local/bin/plandalf
+plandalf --help
+```
+
+Every release also publishes `SHA256SUMS` so the downloaded archive can be verified before installation.
+
+Windows is not advertised as supported until a native Windows build and smoke test are part of CI.
+
 ## Build
 
 Plandalf currently targets Zig 0.16.0 and links against SQLite.
