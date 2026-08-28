@@ -11,6 +11,7 @@ pub const note_type_store = @import("note_type_store.zig");
 pub const generated_card_store = @import("generated_card_store.zig");
 pub const catalog = @import("catalog.zig");
 pub const report = @import("report.zig");
+pub const history_report = @import("history_report.zig");
 pub const backup = @import("backup.zig");
 pub const recovery = @import("recovery.zig");
 pub const migration_commit = @import("migration_commit.zig");
@@ -31,6 +32,8 @@ pub const Report = report.Report;
 pub const DeckSummary = report.DeckSummary;
 pub const Stats = report.Stats;
 pub const OwnedHistories = report.OwnedHistories;
+pub const HistoryReport = history_report.HistoryReport;
+pub const HistoricalStats = history_report.HistoricalStats;
 
 pub const IntegrityResult = recovery.IntegrityResult;
 
