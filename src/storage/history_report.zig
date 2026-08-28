@@ -44,6 +44,14 @@ pub const HistoryReport = struct {
         return stmt.?;
     }
 
+    fn ensureAnalyticsIndexes(self: HistoryReport) !void {
+        const sql = "CREATE INDEX IF NOT EXISTS reviews_time_card_rating_idx ON reviews(reviewed_at_ms, card_id, rating);";
+        var error_message: [*c]u8 = null;
+        const result = c.sqlite3_exec(self.dbHandle(), sql.ptr, null, null, &error_message);
+        if (error_message != null) c.sqlite3_free(error_message);
+        if (result != c.SQLITE_OK) return error.SqliteIndexSetupFailed;
+    }
+
     fn bindInt64(stmt: *c.sqlite3_stmt, index: c_int, value: i64) !void {
         if (c.sqlite3_bind_int64(stmt, index, value) != c.SQLITE_OK) return error.SqliteBindFailed;
     }
@@ -116,6 +124,7 @@ pub const HistoryReport = struct {
         start_ms: ?time.TimestampMs,
         end_ms_exclusive: time.TimestampMs,
     ) !HistoricalStats {
+        try self.ensureAnalyticsIndexes();
         const sql = if (deck_id == null)
             "SELECT COUNT(*), COUNT(DISTINCT r.card_id), SUM(CASE WHEN r.rating=1 THEN 1 ELSE 0 END), SUM(CASE WHEN r.rating=2 THEN 1 ELSE 0 END), SUM(CASE WHEN r.rating=3 THEN 1 ELSE 0 END), SUM(CASE WHEN r.rating=4 THEN 1 ELSE 0 END), SUM(CASE WHEN NOT EXISTS (SELECT 1 FROM reviews prior WHERE prior.card_id=r.card_id AND (prior.reviewed_at_ms < r.reviewed_at_ms OR (prior.reviewed_at_ms = r.reviewed_at_ms AND prior.id < r.id))) THEN 1 ELSE 0 END) FROM reviews r WHERE r.reviewed_at_ms >= ?1 AND r.reviewed_at_ms < ?2;"
         else
@@ -171,4 +180,22 @@ test "historical stats preserve rating counts and streaks" {
     try std.testing.expectEqual(@as(usize, 1), result.easy);
     try std.testing.expectEqual(@as(usize, 2), result.days_studied);
     try std.testing.expectEqual(@as(usize, 2), result.longest_streak_days);
+}
+
+test "historical stats creates the time-range analytics index for existing databases" {
+    var db = try sqlite.Db.open(":memory:");
+    defer db.close();
+    try db.migrate();
+
+    var error_message: [*c]u8 = null;
+    const drop_sql = "DROP INDEX IF EXISTS reviews_time_card_rating_idx;";
+    try std.testing.expectEqual(c.SQLITE_OK, c.sqlite3_exec(db.handle, drop_sql.ptr, null, null, &error_message));
+    if (error_message != null) c.sqlite3_free(error_message);
+
+    const report: HistoryReport = .{ .db = &db };
+    _ = try report.historical(std.testing.allocator, null, null, time.milliseconds_per_day);
+
+    const stmt = try report.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='reviews_time_card_rating_idx';");
+    defer _ = c.sqlite3_finalize(stmt);
+    try std.testing.expectEqual(c.SQLITE_ROW, c.sqlite3_step(stmt));
 }
