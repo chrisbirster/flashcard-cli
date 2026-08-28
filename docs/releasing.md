@@ -45,6 +45,8 @@ macos-x86_64
 
 Windows is intentionally omitted until a native Windows CI build and smoke test are green.
 
+The macOS builds use the SQLite library provided by macOS. The Linux build links against the platform SQLite runtime and is built on GitHub's Ubuntu runner; a fully static/musl Linux binary is not claimed yet.
+
 ## Release artifacts
 
 Each release publishes three archives:
