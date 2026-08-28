@@ -20,6 +20,14 @@ pub const StudyOrder = enum {
     new_first,
 };
 
+pub const StatsWindow = enum {
+    all,
+    today,
+    week,
+    month,
+    year,
+};
+
 /// Parsed Plandalf application commands. Thrawn owns CLI mechanics and
 /// translates the selected command tree node into this domain command union.
 pub const Command = union(enum) {
@@ -50,7 +58,7 @@ pub const Command = union(enum) {
         order: StudyOrder,
         shuffle: bool,
     },
-    stats: struct { deck_id: ?DeckId, json: bool },
+    stats: struct { deck_id: ?DeckId, json: bool, window: StatsWindow },
     inspect: struct { card_id: CardId, json: bool },
     fsrs_optimize: struct { deck_id: ?DeckId, recency_half_life_days: ?f64 },
     fsrs_evaluate: struct { deck_id: ?DeckId },
@@ -80,7 +88,7 @@ pub const help_text =
     \\  plandalf card edit <card-id> <question> <answer>
     \\  plandalf card delete <card-id> --yes
     \\  plandalf study <deck-id> [--new-limit <count>] [--order due|reviews-first|new-first] [--shuffle]
-    \\  plandalf stats [deck-id] [--json]
+    \\  plandalf stats [deck-id] [--period all|today|week|month|year] [--json]
     \\  plandalf inspect <card-id> [--json]
     \\  plandalf fsrs optimize [deck-id] [--recency]
     \\  plandalf fsrs evaluate [deck-id]
@@ -131,7 +139,12 @@ const study_help =
     \\Defaults preserve timestamp order and do not limit new cards or shuffle.
 ;
 
-const stats_help = "Usage: plandalf stats [deck-id] [--json]\n";
+const stats_help =
+    \\Stats command:
+    \\  plandalf stats [deck-id] [--period all|today|week|month|year] [--json]
+    \\
+    \\The summary keeps current deck/card/due totals and adds immutable review-history metrics.
+;
 const inspect_help = "Usage: plandalf inspect <card-id> [--json]\n";
 
 const fsrs_help =
