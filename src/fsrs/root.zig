@@ -8,6 +8,7 @@ pub const parameters = @import("parameters.zig");
 pub const engine = @import("engine.zig");
 pub const registry = @import("registry.zig");
 pub const compare = @import("compare.zig");
+pub const evaluation = @import("evaluation.zig");
 pub const migration = @import("migration.zig");
 pub const v7 = @import("v7/root.zig");
 
@@ -21,6 +22,8 @@ pub const HistoryEntry = history.Entry;
 pub const Candidate = schedule.Candidate;
 pub const Schedule = schedule.Schedule;
 pub const Engine = engine.Engine;
+pub const EvaluationMetrics = evaluation.Metrics;
+pub const EvaluationComparison = evaluation.Comparison;
 
 test {
     std.testing.refAllDecls(@This());
