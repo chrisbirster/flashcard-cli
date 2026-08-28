@@ -69,6 +69,7 @@ pub const migration_v1 =
     \\    scheduled_at_ms INTEGER NULL
     \\);
     \\CREATE INDEX IF NOT EXISTS reviews_card_time_idx ON reviews(card_id, reviewed_at_ms, id);
+    \\CREATE INDEX IF NOT EXISTS reviews_time_card_rating_idx ON reviews(reviewed_at_ms, card_id, rating);
     \\CREATE TRIGGER IF NOT EXISTS reviews_immutable_update
     \\BEFORE UPDATE ON reviews BEGIN
     \\    SELECT RAISE(ABORT, 'review history is immutable');
