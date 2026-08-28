@@ -1,6 +1,7 @@
 name: release
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
@@ -18,7 +19,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -50,6 +51,13 @@ jobs:
         run: |
           set -euo pipefail
           version="$(tr -d '[:space:]' < VERSION)"
+          test -n "$version"
+
+          # Pull requests prove the build/package matrix without publishing.
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            exit 0
+          fi
+
           expected="v${version}"
           if [[ "$REQUESTED_TAG" != "$expected" ]]; then
             echo "release tag '$REQUESTED_TAG' does not match VERSION '$version' (expected '$expected')" >&2
@@ -85,16 +93,17 @@ jobs:
       - name: Package release archive
         shell: bash
         env:
-          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
-          archive="plandalf-${REQUESTED_TAG}-${PLATFORM}.tar.gz"
+          version="$(tr -d '[:space:]' < VERSION)"
+          archive="plandalf-v${version}-${PLATFORM}.tar.gz"
           mkdir -p package
           cp zig-out/bin/plandalf package/plandalf
           cp LICENSE package/LICENSE
           cp README.md package/README.md
           tar -czf "$archive" -C package plandalf LICENSE README.md
+          tar -tzf "$archive"
           shasum -a 256 "$archive"
 
       - uses: actions/upload-artifact@v4
@@ -106,8 +115,11 @@ jobs:
 
   release:
     name: publish
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
