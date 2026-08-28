@@ -1,0 +1,35 @@
+name: homebrew
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - macos-15
+          - macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install --formula ./Formula/plandalf.rb
+      - name: Smoke Plandalf
+        shell: bash
+        run: |
+          set -euo pipefail
+          plandalf --help >/dev/null
+          test_home="$(mktemp -d)"
+          HOME="$test_home" plandalf decks </dev/null >/dev/null
+          test -f "$test_home/.local/share/plandalf/plandalf.db"
+      - name: Test formula
+        shell: bash
+        run: brew test plandalf
