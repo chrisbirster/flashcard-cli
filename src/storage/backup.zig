@@ -33,8 +33,8 @@ test "SQLite backup preserves study data" {
     var source = try sqlite.Db.open(":memory:");
     defer source.close();
     try source.migrate();
-    const deck_id = try source.createDeck("bson", 1);
-    _ = try source.createCard(deck_id, "What is BSON?", "Binary JSON", 2);
+    const deck_id = try source.createDeck("sqlite", 1);
+    _ = try source.createCard(deck_id, "What is SQLite?", "An embedded SQL database", 2);
 
     var destination = try sqlite.Db.open(":memory:");
     defer destination.close();
@@ -42,5 +42,5 @@ test "SQLite backup preserves study data" {
 
     const copied = (try destination.getDeck(std.testing.allocator, deck_id)).?;
     defer copied.deinit(std.testing.allocator);
-    try std.testing.expectEqualStrings("bson", copied.name);
+    try std.testing.expectEqualStrings("sqlite", copied.name);
 }

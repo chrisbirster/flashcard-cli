@@ -6,7 +6,7 @@ test "note add variadic fields are owned independently of caller argv" {
     var front_buf = [_]u8{ 'F', 'r', 'a', 'n', 'c', 'e' };
     var back_buf = [_]u8{ 'P', 'a', 'r', 'i', 's' };
     const args = [_][]const u8{
-        "deez",
+        "plandalf",
         "note",
         "add",
         "3",
@@ -38,7 +38,7 @@ test "note edit variadic fields are owned independently of caller argv" {
     var front_buf = [_]u8{ 'F', 'r', 'a', 'n', 'c', 'e' };
     var back_buf = [_]u8{ 'P', 'a', 'r', 'i', 's' };
     const args = [_][]const u8{
-        "deez",
+        "plandalf",
         "note",
         "edit",
         "3",

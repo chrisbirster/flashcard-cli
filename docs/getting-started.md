@@ -1,10 +1,8 @@
-# Getting started with Deez
+# Getting started with Plandalf
 
-This page is the shortest path from installing Deez to studying a real deck.
+Plandalf is a terminal-first spaced-repetition app. It stores your local data in SQLite and schedules reviews with FSRS-7.
 
-## The five things to understand
-
-Think of Deez like a box of study cards:
+## The model
 
 ```text
 Deck
@@ -13,189 +11,77 @@ Deck
           -> Reviews
 ```
 
-### Deck
+A **deck** groups material. A **note** is the source content you create. A note can generate one or more **cards**. A **review** is an immutable rating event recorded while studying.
 
-A **deck** is a collection of material you want to study, such as `Data Structures`.
+## First run
+
+Build Plandalf:
 
 ```bash
-deez deck add "Data Structures"
-deez decks
+zig build
+./zig-out/bin/plandalf --help
 ```
 
-`deez nuts` is intentionally an alias for `deez decks`.
-
-### Note
-
-A **note** is the source material you create or import.
-
-For example, this is one Basic note:
+The first storage-backed command creates the SQLite database at:
 
 ```text
-Question: What is a stack?
-Answer:   A LIFO data structure.
+~/.local/share/plandalf/plandalf.db
 ```
 
-Add it with:
+To use another database path:
 
 ```bash
-deez note add 1 basic \
+export PLANDALF_DB=/path/to/plandalf.db
+```
+
+You can inspect the resolved path with:
+
+```bash
+plandalf setup
+```
+
+## Create a deck
+
+```bash
+plandalf deck add "Data Structures"
+plandalf decks
+```
+
+The list prints the deck ID used by later commands.
+
+## Add notes
+
+A basic note generates one card:
+
+```bash
+plandalf note add 1 basic \
   "What is a stack?" \
   "A LIFO data structure."
 ```
 
-The `1` is the deck ID shown by `deez decks`.
-
-### Card
-
-A **card** is what Deez actually schedules and shows during study.
-
-One note can generate one or more cards.
-
-For example, a reverse note:
+A reverse note generates both directions:
 
 ```bash
-deez note add 1 reverse "LIFO" "Last in, first out"
-```
-
-generates both directions:
-
-```text
-LIFO -> Last in, first out
-Last in, first out -> LIFO
-```
-
-A cloze note can also generate multiple cards from one logical note.
-
-Compare the source notes with generated cards using:
-
-```bash
-deez notes 1
-deez cards 1
-```
-
-This distinction matters because review history belongs to the generated card identity while the note remains the editable source content.
-
-### `.nut`
-
-A **`.nut` file** is Deez's human-readable, shareable representation of a deck.
-
-It contains the deck name and logical notes, but not your personal study history.
-
-The easiest workflow for a large deck is usually:
-
-```text
-Author deck
-   -> data-structures.nut
-       -> deez nut import data-structures.nut
-           -> deez study <deck-id>
-```
-
-Import a nut with:
-
-```bash
-deez nut import data-structures.nut
-deez nuts
-```
-
-Export a deck you already have:
-
-```bash
-deez nut export 1 > data-structures.nut
-```
-
-### `.sack`
-
-A **`.sack` file** is a rich-media bundle.
-
-It packages:
-
-```text
-deck.nut
-+ images/audio/video used by the deck
-```
-
-Use `.nut` when the deck is text-only. Use `.sack` when the deck needs media.
-
-```bash
-deez sack import data-structures.sack
-deez sack export 1 data-structures.sack
-```
-
-## First run
-
-Run:
-
-```bash
-deez setup
-```
-
-For the simplest local setup, choose SQLite or press Enter when SQLite is the default.
-
-The default database is stored at:
-
-```text
-~/.local/share/deez/deez.db
-```
-
-You can switch to MongoDB later without changing the deck-authoring concepts described here.
-
-## Your first Data Structures deck
-
-Create a deck:
-
-```bash
-deez deck add "Data Structures"
-deez decks
-```
-
-Assume the new deck ID is `1`.
-
-Add a Basic note:
-
-```bash
-deez note add 1 basic \
-  "What is a stack?" \
-  "A data structure that follows last-in, first-out (LIFO) order."
-```
-
-Add a reverse note:
-
-```bash
-deez note add 1 reverse \
+plandalf note add 1 reverse \
   "LIFO" \
   "Last in, first out"
 ```
 
-Add a cloze note:
+Other built-in note types include `optional-reverse`, `cloze`, and `type-answer`. See `docs/card-types.md` for the supported field shapes.
+
+List the generated cards:
 
 ```bash
-deez note add 1 cloze \
-  "A {{c1::stack}} follows last-in, first-out order." \
-  "Data Structures"
+plandalf cards 1
 ```
 
-Add a typed-answer note:
+## Study
 
 ```bash
-deez note add 1 type-answer \
-  "What does LIFO stand for?" \
-  "Last in, first out"
+plandalf study 1
 ```
 
-Inspect what you created:
-
-```bash
-deez notes 1
-deez cards 1
-```
-
-Then study:
-
-```bash
-deez study 1
-```
-
-During review:
+During study, Plandalf reveals the answer and asks for one of the FSRS ratings:
 
 ```text
 1 Again
@@ -204,95 +90,70 @@ During review:
 4 Easy
 ```
 
-Deez uses those ratings with FSRS to decide when the card should appear again.
+Review events are append-only. Current scheduler state is derived from that history.
 
-## Built-in note types
-
-The original built-ins are:
-
-```text
-basic
-basic-reverse / reverse
-optional-reverse
-cloze
-type-answer
-```
-
-RC4.1 adds:
-
-```text
-multiple-choice
-multiple-select
-ordering
-image-occlusion
-```
-
-The interactive types use structured data so future graphical clients can render buttons, multi-select controls, drag ordering, and image masks without guessing from plain text.
-
-For interactive notes, prefer generating a `.nut` file rather than typing JSON-heavy fields manually at the shell.
-
-## Recommended authoring workflow
-
-For a serious deck such as Data Structures:
-
-1. Design the curriculum first.
-2. Generate the logical notes as a `.nut` file.
-3. Import the file into Deez.
-4. Inspect `deez notes` and `deez cards`.
-5. Study the deck and improve weak or ambiguous cards.
-6. Re-export the polished deck for sharing.
-
-Example:
+Useful study controls include:
 
 ```bash
-deez nut import data-structures.nut
-deez nuts
-deez notes 1
-deez cards 1
-deez study 1
+plandalf study 1 --new-limit 20
+plandalf study 1 --order reviews-first
+plandalf study 1 --order new-first --shuffle
 ```
 
-This is generally easier than authoring hundreds of notes individually through shell commands.
-
-## `.nut` is not your backup
-
-A `.nut` deliberately does **not** include:
-
-- your review history
-- due dates
-- difficulty
-- stability
-- FSRS parameter state
-
-That is what makes a nut safe to share with someone else: they get the content and start with fresh study history.
-
-Use Deez backup/restore when the goal is to preserve your own complete study database.
-
-## Quick command cheat sheet
+## Inspect progress
 
 ```bash
-# Configure storage
-deez setup
-
-# Decks
-deez deck add "Data Structures"
-deez decks
-deez nuts
-
-# Content
-deez notes 1
-deez cards 1
-
-# Study
-deez study 1
-
-# Share a text deck
-deez nut export 1 > data-structures.nut
-deez nut import data-structures.nut
-
-# Share a deck with media
-deez sack export 1 data-structures.sack
-deez sack import data-structures.sack
+plandalf stats
+plandalf stats 1
+plandalf inspect <card-id>
+plandalf scheduler list
 ```
 
-For the precise file format, see `docs/nut-format.md`. For media bundles, see `docs/sack-format.md`. For the interactive note schemas added in RC4.1, see `docs/interactions.md`.
+Machine-readable output is available where documented, for example:
+
+```bash
+plandalf stats --json
+plandalf inspect <card-id> --json
+```
+
+## Share a deck
+
+Plandalf's shareable deck format is `.deck`:
+
+```bash
+plandalf deck export 1 > data-structures.deck
+plandalf deck import data-structures.deck
+```
+
+The current emitted format is `plandalf.deck` version 2 NDJSON. It contains logical notes and rebuilds generated cards on import. It intentionally does **not** include your review history or scheduler state.
+
+See `docs/deck-format.md` for the format contract.
+
+## Local web UI/API
+
+Plandalf can expose its local web/API surface on loopback:
+
+```bash
+plandalf web
+```
+
+Use `--no-open` when you do not want Plandalf to launch the default browser:
+
+```bash
+plandalf web --no-open
+```
+
+The server binds to `127.0.0.1` and applies local Host/Origin checks.
+
+## Next commands to learn
+
+```text
+plandalf help deck
+plandalf help note
+plandalf help card
+plandalf help study
+plandalf help stats
+plandalf help fsrs
+```
+
+The CLI itself is the authoritative command surface; if documentation and `plandalf --help` disagree, treat that as a documentation bug.

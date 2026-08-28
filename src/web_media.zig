@@ -16,12 +16,12 @@ const UploadResponse = struct {
 };
 
 pub fn resolveRoot(init: std.process.Init, allocator: std.mem.Allocator) ![]const u8 {
-    const root = if (init.environ_map.get("DEEZ_MEDIA_ROOT")) |override| blk: {
+    const root = if (init.environ_map.get("PLANDALF_MEDIA_ROOT")) |override| blk: {
         if (override.len == 0) return error.InvalidMediaRoot;
         break :blk try allocator.dupe(u8, override);
     } else blk: {
         const home = init.environ_map.get("HOME") orelse return error.MissingHomeDirectory;
-        break :blk try std.fmt.allocPrint(allocator, "{s}/.local/share/deez/media", .{home});
+        break :blk try std.fmt.allocPrint(allocator, "{s}/.local/share/plandalf/media", .{home});
     };
     try Io.Dir.cwd().createDirPath(init.io, root);
     return root;
@@ -59,15 +59,11 @@ fn validateFilename(value: []const u8) ![]const u8 {
 fn setImmutableHeaders(res: *httpz.Response, hash: []const u8, mime: []const u8) ![]const u8 {
     try validateMime(mime);
     const etag = try std.fmt.allocPrint(res.arena, "\"{s}\"", .{hash});
-    // httpz writes header slices after the action returns. Media metadata is
-    // deliberately short-lived, so copy its MIME value into the response arena.
     try res.headerOpts("Content-Type", mime, .{ .dupe_value = true });
     res.header("Cache-Control", "public, max-age=31536000, immutable");
     res.header("ETag", etag);
     res.header("X-Content-Type-Options", "nosniff");
     res.header("Cross-Origin-Resource-Policy", "same-origin");
-    // Media may include active document formats such as SVG. When navigated to
-    // directly, keep them sandboxed rather than granting the local app origin.
     res.header("Content-Security-Policy", "sandbox; default-src 'none'");
     return etag;
 }
@@ -114,8 +110,8 @@ pub fn upload(
     req: *httpz.Request,
     res: *httpz.Response,
 ) !void {
-    const raw_filename = req.header("x-deez-filename") orelse {
-        try jsonError(res, 400, "missing_media_filename", "X-Deez-Filename header is required");
+    const raw_filename = req.header("x-plandalf-filename") orelse {
+        try jsonError(res, 400, "missing_media_filename", "X-Plandalf-Filename header is required");
         return;
     };
     const filename = validateFilename(raw_filename) catch {
@@ -163,9 +159,6 @@ pub fn serve(
         return;
     }
 
-    // std.json.parseFromSlice owns a temporary arena internally. Keep that
-    // allocation graph independent from httpz's request/response arena so its
-    // deinit cannot invalidate metadata slices that are still in use here.
     const metadata_allocator = std.heap.page_allocator;
     const metadata = media.loadMetadata(metadata_allocator, io, media_root, hash) catch |err| {
         if (isMissing(err)) {

@@ -1,6 +1,6 @@
 # FSRS-8 implementation checklist
 
-FSRS-8 is not implemented until an authoritative FSRS-8 specification and/or reference implementation is published. Deez must not infer equations, parameter meanings, defaults, or migration rules from FSRS-7.
+FSRS-8 is not implemented until an authoritative FSRS-8 specification and/or reference implementation is published. Plandalf must not infer equations, parameter meanings, defaults, or migration rules from FSRS-7.
 
 When FSRS-8 is published, use the upstream Open Spaced Repetition project/reference implementation as the source of truth and complete every applicable item below.
 
@@ -25,7 +25,7 @@ When FSRS-8 is published, use the upstream Open Spaced Repetition project/refere
 
 ## Full feature envelope
 
-- [ ] Add FSRS-8 optimization from review history.
+- [ ] Add FSRS-8 optimization from immutable review history.
 - [ ] Add any FSRS-8 recency/training options supported upstream.
 - [ ] Add evaluation/calibration metrics.
 - [ ] Add simulation/workload support.
@@ -40,8 +40,8 @@ When FSRS-8 is published, use the upstream Open Spaced Repetition project/refere
 - [ ] Migration must replay immutable review history through FSRS-8 rather than translate FSRS-7 stability/difficulty directly unless upstream publishes an explicit conversion.
 - [ ] Add a dry-run migration report before activation.
 - [ ] Never rewrite historical review events during migration.
-- [ ] Preserve the old scheduler/parameter metadata needed for audit and rollback planning.
+- [ ] Preserve old scheduler/parameter metadata needed for audit and rollback planning.
 
 ## Definition of done
 
-FSRS-8 becomes `supported` in Deez only after the scheduler, optimizer, evaluator, simulator/retention features, replay, persistence, comparison, migration, and upstream compatibility tests all pass. Until then, `fsrs/8` must return `UnsupportedAlgorithm` rather than silently falling back to FSRS-7.
+FSRS-8 becomes `supported` in Plandalf only after the scheduler, optimizer, evaluator, simulator/retention features, replay, persistence, comparison, migration, and upstream compatibility tests all pass. Until then, `fsrs/8` must return `UnsupportedAlgorithm` rather than silently falling back to FSRS-7.

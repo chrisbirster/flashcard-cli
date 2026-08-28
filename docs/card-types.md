@@ -1,8 +1,8 @@
 # Built-in note and card types
 
-Deez stores **notes** as source content and derives study **cards** from a note type. Review history belongs to generated card identities, not to rendered front/back text.
+Plandalf stores **notes** as source content and derives study **cards** from a note type. Review history belongs to generated card identities, not to rendered front/back text.
 
-This model is shared by SQLite and MongoDB and is the content boundary future CLI, desktop, mobile, and web clients should use.
+The same content model is used by the terminal and local web/API interfaces.
 
 ## Built-in note types
 
@@ -16,7 +16,7 @@ Fields:
 Generates one card with stable identity `note:<note-id>:template:0`.
 
 ```bash
-deez note add 1 basic "What is BSON?" "Binary JSON"
+plandalf note add 1 basic "What is SQLite?" "An embedded SQL database"
 ```
 
 ### Basic + Reverse
@@ -32,7 +32,7 @@ Generates two cards:
 - reverse: `note:<note-id>:template:1`
 
 ```bash
-deez note add 1 reverse "France" "Paris"
+plandalf note add 1 reverse "France" "Paris"
 ```
 
 ### Basic + Optional Reverse
@@ -46,7 +46,7 @@ Fields:
 A non-empty third field requests the reverse generated card.
 
 ```bash
-deez note add 1 optional-reverse "France" "Paris" "yes"
+plandalf note add 1 optional-reverse "France" "Paris" "yes"
 ```
 
 ### Cloze
@@ -87,7 +87,7 @@ Fields:
 - `Correct`
 - `Explanation`
 
-Generates one card. `Choices` is JSON containing stable choice IDs and display text; `Correct` is the stable choice ID rather than a letter or array position. This lets graphical clients randomize choices without changing the semantic answer.
+Generates one card. `Choices` is JSON containing stable choice IDs and display text; `Correct` is the stable choice ID rather than a letter or array position. A graphical client can randomize choices without changing the semantic answer.
 
 ### Multiple Select
 
@@ -108,7 +108,7 @@ Fields:
 - `Items`
 - `Explanation`
 
-Generates one card. `Items` is a JSON array in canonical correct order, with stable item IDs. Presentation order can be shuffled independently of the stored answer order.
+Generates one card. `Items` is a JSON array in canonical correct order, with stable item IDs. Presentation order can be shuffled independently of stored answer order.
 
 ### Image Occlusion
 
@@ -118,9 +118,9 @@ Fields:
 - `Masks`
 - `Extra`
 
-`Image` is a `deez-media://sha256:<hash>` reference. `Masks` is JSON containing normalized rectangles, stable positive mask IDs, answers, and optional per-mask prompts.
+`Image` uses the established `deez-media://sha256:<hash>` content-addressed URI. That URI remains stable for stored-data compatibility and is independent from the Plandalf executable name.
 
-Each mask generates one card with identity:
+`Masks` is JSON containing normalized rectangles, stable positive mask IDs, answers, and optional per-mask prompts. Each mask generates one card with identity:
 
 ```text
 note:<note-id>:occlusion:<mask-id>
@@ -128,55 +128,32 @@ note:<note-id>:occlusion:<mask-id>
 
 Reordering masks does not change card identities, so review history stays attached to the same semantic mask.
 
-See `docs/interactions.md` for exact JSON schemas and CLI examples for these four interactive note types.
+See `docs/interactions.md` for the exact structured-field schemas.
 
 ## Listing and editing notes
 
 ```bash
-deez notes <deck-id>
-deez note edit <deck-id> <note-id> <fields...>
+plandalf notes <deck-id>
+plandalf note edit <deck-id> <note-id> <fields...>
 ```
 
-`deez notes` lists logical notes rather than duplicating one row for every reverse/cloze/image-occlusion card. Legacy v0.1.x question/answer cards are shown as `legacy-basic` without mutating them merely to list content.
+`plandalf notes` lists logical notes rather than duplicating one row for every reverse, cloze, or image-occlusion card.
 
 Editing a note regenerates content using stable generation keys. An unchanged generation identity keeps the same card ID, so its immutable review history remains attached even when field text changes.
 
-Deez does not delete reviewed cards merely because a generated identity becomes temporarily absent. Destructive card deletion currently removes review history in storage, so generated-card retirement needs an explicit non-destructive card-state/tombstone model rather than using deletion as a shortcut.
+Plandalf will not destructively delete a card that already has review history. Generated-card retirement is non-destructive so immutable reviews remain available for replay and recovery.
 
-## Shareable JSON v2
+## `.deck` v2
 
-Exports represent logical notes instead of flattened generated cards:
+Plandalf's shareable format represents logical notes rather than flattened generated cards. It is line-oriented NDJSON:
 
-```json
-{
-  "format": "deez.deck",
-  "version": 2,
-  "deck": {
-    "name": "Geography",
-    "notes": [
-      {
-        "note_type": "basic-reverse",
-        "fields": ["France", "Paris"],
-        "tags_json": "[]"
-      }
-    ]
-  }
-}
+```text
+{"kind":"deck","format":"plandalf.deck","version":2,"name":"Geography"}
+{"kind":"note","note_type":"reverse","fields":["France","Paris"],"tags_json":"[]"}
 ```
 
 This prevents a reverse note from becoming two unrelated Basic cards after sharing it. Structured interactive fields are preserved as note fields as well.
 
-Version 1 JSON deck files remain importable.
+Version 1 `plandalf.deck` files containing `kind:"card"` records remain importable for compatibility. Version 2 is the emitted format.
 
-## `.nut` v2
-
-`.nut` remains NDJSON, but v2 stores one logical note per record:
-
-```text
-{"kind":"deck","format":"deez.nut","version":2,"name":"Geography"}
-{"kind":"note","note_type":"basic-reverse","fields":["France","Paris"],"tags_json":"[]"}
-```
-
-Version 1 `.nut` files containing `kind:"card"` records remain importable.
-
-Both JSON and `.nut` are still **content-only**. They intentionally exclude review history, due dates, stability, difficulty, scheduler cache, and parameter-set identity. Use Deez backup/restore for full personal-data migration.
+`.deck` is **content-only**. It intentionally excludes review history, due dates, stability, difficulty, scheduler cache, and parameter-set identity.

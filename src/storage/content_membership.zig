@@ -1,5 +1,4 @@
 const std = @import("std");
-const bongo = @import("bongo");
 
 const content = @import("../content.zig");
 const sqlite = @import("sqlite.zig");
@@ -22,9 +21,9 @@ pub const ContentMembership = struct {
         allocator: std.mem.Allocator,
         note_id: content.NoteId,
     ) !?u64 {
+        _ = allocator;
         return switch (self.store.*) {
             .sqlite => |db| sqliteDeckIdForNote(db, note_id),
-            .mongodb => |*mongo| mongoDeckIdForNote(allocator, mongo, note_id),
         };
     }
 };
@@ -54,41 +53,6 @@ fn sqliteDeckIdForNote(db: *sqlite.Db, note_id: content.NoteId) !?u64 {
     const second = sqlite.c.sqlite3_step(stmt.?);
     if (second == sqlite.c.SQLITE_ROW) return error.NoteSpansDecks;
     if (second != sqlite.c.SQLITE_DONE) return error.SqliteStepFailed;
-    return deck_id;
-}
-
-fn mongoDeckIdForNote(
-    allocator: std.mem.Allocator,
-    store: *@import("mongodb.zig").Store,
-    note_id: content.NoteId,
-) !?u64 {
-    const signed_id = std.math.cast(i64, note_id) orelse return error.IdOutOfRange;
-    var cursor = try store.client.find(
-        store.client.databaseName(),
-        "generated_cards",
-        .{ .note_id = signed_id },
-        .{ .sort = .{ ._id = @as(i32, 1) } },
-    );
-    defer cursor.deinit();
-
-    var deck_id: ?u64 = null;
-    while (try cursor.next()) |document| {
-        const value = (try bongo.bson.Reader.get(document, "_id")) orelse return error.MissingField;
-        const signed_card_id = switch (value) {
-            .int32 => |v| @as(i64, v),
-            .int64 => |v| v,
-            else => return error.InvalidField,
-        };
-        const card_id: u64 = @intCast(signed_card_id);
-        const card = (try store.getCard(allocator, card_id)) orelse return error.CardNotFound;
-        defer card.deinit(allocator);
-
-        if (deck_id) |existing| {
-            if (existing != card.deck_id) return error.NoteSpansDecks;
-        } else {
-            deck_id = card.deck_id;
-        }
-    }
     return deck_id;
 }
 

@@ -1,137 +1,77 @@
-# Deez client architecture
+# Plandalf client architecture
 
-Deez keeps one source of truth for study behavior while allowing multiple user interfaces.
-
-## Repository boundaries
-
-The core repository is `chrisbirster/deez`.
-
-Separate client repositories:
-
-- `chrisbirster/deez-web` — local SolidJS 2 web UI
-- `chrisbirster/deez-desktop` — native desktop shell that reuses `deez-web`
-- `chrisbirster/deez-mobile` — mobile client developed separately once StingJS is ready
-- `chrisbirster/deez-run` — public catalog/discovery website for `.nut` content
-
-Client repositories do not reimplement Deez domain behavior.
+Plandalf keeps one Zig source of truth for study behavior while allowing terminal and graphical interfaces to use the same domain model.
 
 ## Core ownership
 
 The Zig core owns:
 
-- SQLite and MongoDB/Bongo persistence
-- immutable review history
-- FSRS scheduling
-- note-type definitions and validation
-- note-to-card generation
-- stable generated-card identity
-- template rendering
-- the structured `RenderedCard` interaction contract
-- `.nut` and `.sack` import/export
-- media identity and storage
-- the local HTTP API used by graphical clients
+- SQLite persistence;
+- immutable review history;
+- FSRS scheduling and derived scheduler state;
+- note-type definitions and validation;
+- deterministic note-to-card generation;
+- template and interaction rendering;
+- `.deck` import/export;
+- media identity/storage;
+- the loopback HTTP API.
 
-## `deez serve`
+Clients should not reimplement scheduling, durable data rules, or note-to-card generation.
 
-`deez serve` is an on-demand local HTTP server for browser/desktop clients. It is not an always-running OS daemon.
+## Terminal client
 
-The API is versioned beneath `/api/v1` and binds to loopback only by default.
+The installed executable is `plandalf`. CLI parsing uses Thrawn, but Plandalf owns its command semantics and domain behavior.
 
-Initial API areas:
+## Local web/API surface
 
-```text
-/api/v1/health
-/api/v1/version
-/api/v1/capabilities
-/api/v1/decks
-/api/v1/decks/:deck_id
-/api/v1/decks/:deck_id/notes
-/api/v1/decks/:deck_id/cards
-/api/v1/notes/:note_id
-/api/v1/notes/preview
-/api/v1/cards/:card_id
+`plandalf web` starts the local application surface on `127.0.0.1`. It is on-demand, not an always-running operating-system daemon.
+
+The API is versioned beneath `/api/v1`. Current areas include health, decks, notes, cards, media, and study operations.
+
+The server applies local Host/Origin validation before serving application/API requests. Graphical clients should treat the local server as a private local capability, not as an internet-facing service.
+
+Use:
+
+```bash
+plandalf web --no-open
 ```
 
-`deez web` is a higher-level command planned to start the same local server, serve the built `deez-web` Vite `dist/`, and open the system browser.
+when a shell or desktop host wants to manage browser/WebView behavior itself.
 
-## Local HTTP security
+## Data boundary
 
-- bind to `127.0.0.1` by default
-- never expose `0.0.0.0` without an explicit opt-in mode
-- apply request/header/body/time limits
-- validate browser-facing host/origin assumptions where appropriate
-- do not treat CORS as authentication
-- keep any future internet-facing service behind an appropriate reverse proxy/TLS boundary
-
-## Notes versus cards
+All interfaces operate on the same SQLite database. By default:
 
 ```text
-Note (editable source)
-        |
-        v
-card generation
-        |
-        v
-Card(s) (study/scheduling identities)
+~/.local/share/plandalf/plandalf.db
 ```
 
-Users normally edit notes. Generated cards are previewed/inspected and retain scheduling/review identity.
+Override it with `PLANDALF_DB` when a client needs an isolated database for development or testing.
 
-## Render contract
+The database and immutable review history remain authoritative. UI state is not.
 
-Clients consume:
+## Content interchange
 
-```text
-RenderedCard {
-    front,
-    back,
-    css,
-    interaction,
-}
-```
+`.deck` is the portable deck-content boundary. It is for sharing/importing logical study content, not synchronizing an entire application database.
 
-Interaction variants:
+Version 2 contains logical notes and regenerates cards on import. Review history and scheduler state stay local.
 
-```text
-reveal
-type_answer
-single_choice
-multiple_choice
-ordering
-image_occlusion
-```
+Media references currently retain the established `deez-media://sha256:` URI scheme so existing stored card content remains valid. The URI is a data protocol and is intentionally versioned separately from the executable/product name.
 
-Clients must not parse terminal text to infer interaction behavior.
+## Client rules
 
-## Web
+A new client should:
 
-`deez-web` is the local application UI. Its current direction is:
+1. use the Plandalf local API or core behavior rather than duplicate scheduler logic;
+2. preserve string IDs exactly as returned by the API;
+3. treat reviews as append-only events;
+4. expect scheduler state to be rebuildable;
+5. use `.deck` for portable deck content;
+6. avoid exposing the loopback API beyond the local machine;
+7. keep client-specific navigation and presentation outside the Zig domain core.
 
-- SolidJS 2 current v2 beta/RC line
-- Solid Router v2 compatible with Solid 2
-- Vite
-- TypeScript
-- npm
-- Tailwind CSS
+## Testing clients
 
-The production build emits `dist/`; the Deez Zig process will serve those static assets for local web use.
+End-to-end tests should start Plandalf with an isolated `HOME` or `PLANDALF_DB`, bind to a test port, exercise `/api/v1/health`, and clean up the process/database afterward.
 
-## Desktop
-
-`deez-desktop` is a thin native shell that reuses the authoritative `deez-web` UI. The first implementation may launch/connect to `deez serve` over loopback and load the same application in a system WebView.
-
-## deez.run
-
-`deez.run` is a separate public website/catalog. It is not the local application backend. Public `.nut` discovery/publishing may use a GitHub-backed registry/content model, but that work belongs in the separate `deez-run` repository.
-
-## API evolution
-
-- version wire endpoints
-- use stable IDs for decks, notes, cards, choices, ordering items, and occlusion masks
-- use tagged JSON interaction shapes
-- return machine-readable error codes
-- expose capability discovery
-- add fields compatibly where possible
-- make breaking wire changes in a new API version
-
-See issue #95 for the local API implementation milestone.
+The repository's `test/web_smoke.sh` and `test/web_media_smoke.sh` are the reference smoke flows for the local API contract.

@@ -15,7 +15,7 @@ pub const Options = struct {
 
 pub const help_text =
     \\Local API server:
-    \\  deez serve [--port <1..65535>]
+    \\  plandalf serve [--port <1..65535>]
     \\
     \\Binds to 127.0.0.1 only. The default port is 5882.
 ;
@@ -71,23 +71,12 @@ pub fn run(init: std.process.Init, options: Options) !void {
     const io = init.io;
     const arena = init.arena.allocator();
     const selection = try config.resolve(init);
-
-    switch (selection.backend) {
-        .mongodb => {
-            const mongo = try storage.MongoStore.connect(io, allocator, selection.mongo_uri.?);
-            var store: storage.Store = .{ .mongodb = mongo };
-            defer store.deinit();
-            try serveWithStore(allocator, io, &store, options);
-        },
-        .sqlite => {
-            const db_path_z = try arena.dupeZ(u8, selection.sqlite_path.?);
-            var db = try storage.Db.open(db_path_z);
-            defer db.close();
-            try db.migrate();
-            var store: storage.Store = .{ .sqlite = &db };
-            try serveWithStore(allocator, io, &store, options);
-        },
-    }
+    const db_path_z = try arena.dupeZ(u8, selection.sqlite_path);
+    var db = try storage.Db.open(db_path_z);
+    defer db.close();
+    try db.migrate();
+    var store: storage.Store = .{ .sqlite = &db };
+    try serveWithStore(allocator, io, &store, options);
 }
 
 fn serveWithStore(
@@ -143,7 +132,7 @@ fn serveWithStore(
     var stdout_buffer: [256]u8 = undefined;
     var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
     const out = &stdout_file_writer.interface;
-    try out.print("Deez API: http://127.0.0.1:{d}\n", .{options.port});
+    try out.print("Plandalf API: http://127.0.0.1:{d}\n", .{options.port});
     try out.flush();
 
     try server.listen();
@@ -426,12 +415,12 @@ fn previewNote(app: *App, req: *httpz.Request, res: *httpz.Response) !void {
 }
 
 test "serve options are loopback-port only" {
-    const default_args = [_][]const u8{ "deez", "serve" };
+    const default_args = [_][]const u8{ "plandalf", "serve" };
     try std.testing.expectEqual(@as(u16, 5882), (try parseOptions(&default_args)).port);
 
-    const custom_args = [_][]const u8{ "deez", "serve", "--port", "9000" };
+    const custom_args = [_][]const u8{ "plandalf", "serve", "--port", "9000" };
     try std.testing.expectEqual(@as(u16, 9000), (try parseOptions(&custom_args)).port);
 
-    const zero_args = [_][]const u8{ "deez", "serve", "--port", "0" };
+    const zero_args = [_][]const u8{ "plandalf", "serve", "--port", "0" };
     try std.testing.expectError(error.InvalidPort, parseOptions(&zero_args));
 }

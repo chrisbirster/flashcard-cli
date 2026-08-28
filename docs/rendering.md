@@ -1,6 +1,6 @@
 # Template rendering
 
-Deez uses one deterministic template renderer for terminal, web, desktop, and mobile clients.
+Plandalf uses one deterministic template renderer for terminal and graphical clients.
 
 The renderer operates on a `NoteTypeDefinition`, its field values, a template ordinal, and rendering options.
 
@@ -21,7 +21,7 @@ A field token inserts the value of the named note field.
 {{FrontSide}}
 ```
 
-On the back template, `FrontSide` inserts the rendered front of the card.
+On a back template, `FrontSide` inserts the rendered front of the card.
 
 ### Conditional sections
 
@@ -55,19 +55,7 @@ For:
 Paris is the capital of {{c1::France}}.
 ```
 
-ordinal `1` renders:
-
-Front:
-
-```text
-Paris is the capital of [...].
-```
-
-Back:
-
-```text
-Paris is the capital of France.
-```
+ordinal `1` renders a front with the answer hidden and a back with the answer revealed.
 
 Cloze hints use:
 
@@ -83,48 +71,43 @@ which renders `[country]` on the front.
 {{type:Back}}
 ```
 
-The rich renderer emits a type-answer placeholder and exposes the expected value through `RenderedCard.typed_answer`.
-
-Terminal/plain-text rendering removes the placeholder while retaining typed-answer metadata.
+The rich renderer emits a type-answer placeholder and exposes the expected value through `RenderedCard.typed_answer`. Terminal/plain-text rendering removes the placeholder while retaining typed-answer metadata.
 
 ## Rendering modes
 
-### html
+### `html`
 
-Preserves HTML and returns the note type CSS for graphical clients.
+Preserves supported presentation markup and returns note-type CSS for graphical clients.
 
-### plain_text
+### `plain_text`
 
-Uses the same template evaluation first, then converts the result to terminal-safe text.
-
-The terminal is not a separate rendering implementation.
+Uses the same template evaluation first, then converts the result to terminal-safe text. The terminal is not a separate rendering implementation.
 
 ## Built-in card generation
 
-Built-in note types use this renderer:
+Built-in note types flow through the same renderer:
 
 ```text
 Note
   -> card_types.drafts()
   -> render.renderCard()
   -> CardDraft
-  -> storage
+  -> SQLite storage
 ```
-
-Basic, reverse, optional reverse, cloze, and type-answer cards therefore share the same rendering semantics as future graphical clients.
 
 Generated-card identity remains independent from presentation:
 
 ```text
 note:<note-id>:template:<ordinal>
 note:<note-id>:cloze:<ordinal>
+note:<note-id>:occlusion:<mask-id>
 ```
 
-Changing rendering does not intentionally replace card IDs or review history.
+Changing rendered presentation does not intentionally replace card IDs or immutable review history.
 
 ## Safety
 
-Deez templates support presentation markup but not arbitrary executable code.
+Plandalf templates support presentation markup but not arbitrary executable code.
 
 The renderer rejects constructs such as:
 
@@ -139,14 +122,6 @@ Custom templates are data, not executable JavaScript.
 
 ## Determinism
 
-Given the same:
-
-- note type
-- field values
-- template ordinal
-- cloze ordinal
-- rendering mode
-
-the renderer must produce the same result regardless of whether the note is stored in SQLite or MongoDB.
+Given the same note type, field values, template ordinal, cloze ordinal, and rendering mode, the renderer must produce the same result regardless of whether it is called from the terminal or local web/API interface.
 
 Golden tests in `src/render.zig` protect built-in rendering behavior.

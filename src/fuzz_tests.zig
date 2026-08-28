@@ -1,6 +1,5 @@
 const std = @import("std");
 const fsrs = @import("fsrs/root.zig");
-const interchange_import = @import("interchange_import.zig");
 const time = @import("time.zig");
 
 fn fuzzScheduler(_: void, smith: *std.testing.Smith) !void {
@@ -53,24 +52,10 @@ fn fuzzReplay(_: void, smith: *std.testing.Smith) !void {
     }
 }
 
-fn fuzzInterchange(_: void, smith: *std.testing.Smith) !void {
-    var bytes: [512]u8 = undefined;
-    var len: usize = 0;
-    while (len < bytes.len and !smith.eos()) {
-        bytes[len] = smith.value(u8);
-        len += 1;
-    }
-    interchange_import.validateArchive(bytes[0..len]) catch {};
-}
-
 test "fuzz FSRS numeric invariants" {
     try std.testing.fuzz({}, fuzzScheduler, .{});
 }
 
 test "fuzz chronological FSRS replay" {
     try std.testing.fuzz({}, fuzzReplay, .{});
-}
-
-test "fuzz Deez interchange parser" {
-    try std.testing.fuzz({}, fuzzInterchange, .{});
 }

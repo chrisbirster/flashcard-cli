@@ -1,6 +1,8 @@
 const std = @import("std");
 const Io = std.Io;
 
+// Keep the established media reference URI stable. This is embedded in card
+// content and is independent from the executable/product name.
 pub const reference_prefix = "deez-media://sha256:";
 pub const max_media_bytes: usize = 256 * 1024 * 1024;
 

@@ -1,8 +1,8 @@
 # Interactive built-in note types
 
-Deez v0.2.0-rc.4.1 adds four built-in logical note types intended for richer study material while preserving the same content-only `.nut` v2 model.
+Plandalf supports structured logical note types for richer study material while preserving the same content-only `.deck` model.
 
-The terminal client renders deterministic self-grade fallbacks. Future graphical clients can use the same structured fields to provide clickable choices, drag-and-drop ordering, and visual image masks without changing the deck format.
+The terminal client renders deterministic self-grade fallbacks. Graphical clients can use the same structured fields for clickable choices, ordering interactions, and image masks without changing scheduling semantics.
 
 ## Multiple choice
 
@@ -35,7 +35,7 @@ Fields:
 hash-table
 ```
 
-Example `.nut` note:
+Example `.deck` note record:
 
 ```json
 {"kind":"note","note_type":"multiple-choice","fields":["Which structure normally provides average O(1) key lookup?","[{\"id\":\"array\",\"text\":\"Array\"},{\"id\":\"hash-table\",\"text\":\"Hash table\"},{\"id\":\"linked-list\",\"text\":\"Linked list\"}]","hash-table","Hash tables use hashing to locate a bucket."],"tags_json":"[\"data-structures\"]"}
@@ -58,15 +58,13 @@ Fields:
 3. `Correct`
 4. `Explanation`
 
-`Choices` uses the same stable-ID JSON objects as multiple choice.
-
-`Correct` is a JSON array of choice IDs:
+`Choices` uses the same stable-ID objects as multiple choice. `Correct` is a JSON array of choice IDs:
 
 ```json
 ["push","pop"]
 ```
 
-Example:
+Example `.deck` note record:
 
 ```json
 {"kind":"note","note_type":"multiple-select","fields":["Which operations are normally O(1) on a stack?","[{\"id\":\"push\",\"text\":\"Push\"},{\"id\":\"pop\",\"text\":\"Pop\"},{\"id\":\"search\",\"text\":\"Search arbitrary item\"}]","[\"push\",\"pop\"]","A stack exposes constant-time operations at one end."],"tags_json":"[\"data-structures\",\"stack\"]"}
@@ -88,7 +86,7 @@ Fields:
 2. `Items`
 3. `Explanation`
 
-`Items` is a JSON array in the canonical correct order. Each item has a stable ID and display text:
+`Items` is a JSON array in canonical correct order. Each item has a stable ID and display text:
 
 ```json
 [
@@ -99,7 +97,7 @@ Fields:
 ]
 ```
 
-The stored order is authoritative. Presentation order is deliberately not part of the note identity, so clients are free to shuffle the items during study.
+The stored order is authoritative. Presentation order is deliberately not part of note identity, so clients may shuffle items during study.
 
 ## Image occlusion
 
@@ -115,13 +113,15 @@ Fields:
 2. `Masks`
 3. `Extra`
 
-`Image` must be an existing Deez content-addressed media reference:
+`Image` must be an existing content-addressed media reference:
 
 ```text
 deez-media://sha256:<64 lowercase hex characters>
 ```
 
-`Masks` is JSON. Coordinates are normalized from `0.0` to `1.0` relative to the image dimensions:
+The `deez-media://` prefix is intentionally retained as a stable stored-data protocol even though the application is named Plandalf.
+
+`Masks` is JSON. Coordinates are normalized from `0.0` to `1.0` relative to image dimensions:
 
 ```json
 [
@@ -145,22 +145,22 @@ deez-media://sha256:<64 lowercase hex characters>
 ]
 ```
 
-Each mask produces one generated card. The stable generation key is:
+Each mask produces one generated card with stable generation key:
 
 ```text
 note:<note-id>:occlusion:<mask-id>
 ```
 
-Mask IDs must be positive and unique within the note. Reordering the masks does not change card identities. This is important because review history stays attached to the same semantic mask rather than to its array position.
+Mask IDs must be positive and unique. Reordering masks does not change card identities, so immutable review history stays attached to the same semantic mask.
 
-The terminal fallback prints the media reference and normalized rectangle. A graphical client can use the same fields to draw the mask directly over the image.
+The terminal fallback prints the media reference and normalized rectangle. A graphical client can draw the mask over the image using the same structured fields.
 
 ## CLI examples
 
 Multiple choice:
 
 ```bash
-deez note add 1 multiple-choice \
+plandalf note add 1 multiple-choice \
   "Which structure normally provides average O(1) lookup?" \
   '[{"id":"array","text":"Array"},{"id":"hash","text":"Hash table"}]' \
   "hash" \
@@ -170,20 +170,22 @@ deez note add 1 multiple-choice \
 Ordering:
 
 ```bash
-deez note add 1 ordering \
+plandalf note add 1 ordering \
   "Put hash lookup in order" \
   '[{"id":"hash","text":"Hash the key"},{"id":"bucket","text":"Choose the bucket"},{"id":"return","text":"Return the value"}]' \
   ""
 ```
 
-Image occlusion normally starts by importing media:
+Image occlusion normally starts by adding media:
 
 ```bash
-deez media add tree.png
+plandalf media add tree.png
 ```
 
-Then use the returned `deez-media://sha256:...` reference in the note. Export the deck as `.sack` when the media must travel with the nut.
+Then use the returned `deez-media://sha256:...` reference in the note.
+
+A `.deck` file preserves that reference as note content, but it does not bundle the referenced media bytes. Media portability should therefore be handled explicitly rather than assuming `.deck` is a package format.
 
 ## Data safety
 
-These note types do not alter scheduling semantics. Generated cards still own immutable review history, and content edits update cards by stable generation identity rather than replacing reviewed cards solely because their rendered text changed.
+Interactive note types do not alter scheduling semantics. Generated cards own immutable review history, and content edits update cards by stable generation identity rather than replacing reviewed cards solely because rendered text changed.

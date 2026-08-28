@@ -5,7 +5,7 @@ const config = @import("config.zig");
 const content = @import("content.zig");
 const storage = @import("storage/root.zig");
 
-pub const help_text = "Usage: deez notes <deck-id>\n";
+pub const help_text = "Usage: plandalf notes <deck-id>\n";
 
 pub fn isCommand(args: []const []const u8) bool {
     return args.len >= 2 and std.mem.eql(u8, args[1], "notes");
@@ -60,7 +60,6 @@ fn listWithStore(
             const first = if (note.fields.len == 0) "" else note.fields[0].value;
             try out.print("{d}  {s}  {s}\n", .{ note.id, typeLabel(note.note_type_id), first });
         } else {
-            // Legacy v0.1.x cards have no note row until explicitly adopted.
             try out.print("-  legacy-basic  {s}\n", .{card.question});
         }
     }
@@ -69,25 +68,11 @@ fn listWithStore(
 pub fn run(init: std.process.Init, args: []const []const u8) !void {
     if (args.len != 3) return error.InvalidArguments;
     const deck_id = try parseId(args[2]);
-    const allocator = init.gpa;
-    const io = init.io;
-    const arena = init.arena.allocator();
     const selection = try config.resolve(init);
-
-    switch (selection.backend) {
-        .mongodb => {
-            const mongo = try storage.MongoStore.connect(io, allocator, selection.mongo_uri.?);
-            var store: storage.Store = .{ .mongodb = mongo };
-            defer store.deinit();
-            try listWithStore(allocator, io, &store, deck_id);
-        },
-        .sqlite => {
-            const db_path_z = try arena.dupeZ(u8, selection.sqlite_path.?);
-            var db = try storage.Db.open(db_path_z);
-            defer db.close();
-            try db.migrate();
-            var store: storage.Store = .{ .sqlite = &db };
-            try listWithStore(allocator, io, &store, deck_id);
-        },
-    }
+    const db_path_z = try init.arena.allocator().dupeZ(u8, selection.sqlite_path);
+    var db = try storage.Db.open(db_path_z);
+    defer db.close();
+    try db.migrate();
+    var store: storage.Store = .{ .sqlite = &db };
+    try listWithStore(init.gpa, init.io, &store, deck_id);
 }

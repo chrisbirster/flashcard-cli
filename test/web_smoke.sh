@@ -6,11 +6,10 @@ port=49319
 base="http://127.0.0.1:${port}"
 api="$base/api/v1"
 export HOME="$tmp/home"
-export DEEZ_STORAGE=sqlite
-export DEEZ_DB="$tmp/deez.db"
+export PLANDALF_DB="$tmp/plandalf.db"
 mkdir -p "$HOME" "$tmp/web/assets"
-printf '<!doctype html><title>Deez Web Smoke</title><div id="app">deez-spa-smoke</div>\n' >"$tmp/web/index.html"
-printf 'console.log("deez-asset-smoke");\n' >"$tmp/web/assets/app.js"
+printf '<!doctype html><title>Plandalf Web Smoke</title><div id="app">plandalf-spa-smoke</div>\n' >"$tmp/web/index.html"
+printf 'console.log("plandalf-asset-smoke");\n' >"$tmp/web/assets/app.js"
 printf 'must-not-be-served\n' >"$tmp/secret"
 
 cleanup() {
@@ -22,8 +21,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-./zig-out/bin/deez deck add "Web Smoke" >/dev/null
-./zig-out/bin/deez web --port "$port" --web-root "$tmp/web" >"$tmp/web.log" 2>&1 &
+./zig-out/bin/plandalf deck add "Web Smoke" >/dev/null
+./zig-out/bin/plandalf web --port "$port" --web-root "$tmp/web" >"$tmp/web.log" 2>&1 &
 server_pid=$!
 
 ready=0
@@ -40,10 +39,10 @@ if [[ "$ready" != 1 ]]; then
 fi
 
 # Static app serving and Solid Router fallback.
-curl -fsS "$base/" | grep -q 'deez-spa-smoke'
-curl -fsS "$base/decks/1" | grep -q 'deez-spa-smoke'
+curl -fsS "$base/" | grep -q 'plandalf-spa-smoke'
+curl -fsS "$base/decks/1" | grep -q 'plandalf-spa-smoke'
 curl -fsS -D "$tmp/asset-headers.txt" "$base/assets/app.js" -o "$tmp/app.js"
-grep -q 'deez-asset-smoke' "$tmp/app.js"
+grep -q 'plandalf-asset-smoke' "$tmp/app.js"
 grep -qi '^content-type: text/javascript' "$tmp/asset-headers.txt"
 grep -qi '^cache-control: public, max-age=31536000, immutable' "$tmp/asset-headers.txt"
 
@@ -341,4 +340,4 @@ assert deck["card_count"] == 0, deck
 assert deck["due_count"] == 0, deck
 PY
 
-echo "Deez Web app/API smoke passed"
+echo "Plandalf Web app/API smoke passed"
