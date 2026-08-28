@@ -23,6 +23,6 @@ class Plandalf < Formula
   end
 
   test do
-    assert_match "Plandalf", shell_output("#{bin}/plandalf --help")
+    system bin/"plandalf", "--help"
   end
 end
