@@ -129,7 +129,7 @@ pub fn importNotes(
 ) !usize {
     var card_count: usize = 0;
     for (notes) |note| {
-        const kind = try content.BuiltInNoteType.parse(note.note_type);
+        const kind = try content.BuiltInNoteType.parseStored(note.note_type);
         const generated = try card_types.create(
             allocator,
             store,
@@ -170,4 +170,8 @@ test "portable note type slugs include interaction types" {
     try std.testing.expectEqualStrings("multiple-select", try slugForNoteType(7));
     try std.testing.expectEqualStrings("ordering", try slugForNoteType(8));
     try std.testing.expectEqualStrings("image-occlusion", try slugForNoteType(9));
+}
+
+test "legacy optional reverse remains importable" {
+    try std.testing.expectEqual(content.BuiltInNoteType.optional_reverse, try content.BuiltInNoteType.parseStored("optional-reverse"));
 }
