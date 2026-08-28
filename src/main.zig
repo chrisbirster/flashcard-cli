@@ -45,6 +45,13 @@ fn printHelp(init: std.process.Init, help: plandalf.thrawn_cli.Help) !void {
     try writeHelp(out, help);
 }
 
+fn isLegacyOptionalReverseAuthoring(args: []const []const u8) bool {
+    return args.len >= 5 and
+        std.mem.eql(u8, args[1], "note") and
+        std.mem.eql(u8, args[2], "add") and
+        std.mem.eql(u8, args[4], "optional-reverse");
+}
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
     const raw_args = try init.minimal.args.toSlice(arena);
@@ -75,6 +82,10 @@ pub fn main(init: std.process.Init) !void {
             }
         };
         return;
+    }
+
+    if (isLegacyOptionalReverseAuthoring(args)) {
+        printRawErrorAndExit(init, error.UnknownNoteType, plandalf.cli.helpText(.note));
     }
 
     var route = plandalf.thrawn_cli.parse(arena, args) catch |err| {
