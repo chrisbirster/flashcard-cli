@@ -35,6 +35,7 @@ jobs:
         run: |
           bash test/web_smoke.sh
           bash test/web_media_smoke.sh
+          bash test/mobile_api_smoke.sh
       - name: First-run and .deck smoke
         shell: bash
         run: |
